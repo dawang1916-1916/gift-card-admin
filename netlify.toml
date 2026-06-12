@@ -1,11 +1,5 @@
 [build]
-  command = "npm install && ./node_modules/.bin/vite build"
-  publish = "dist"
-  functions = "netlify/functions"
-
-[dev]
-  command = "npm run dev"
-  port = 3000
+  publish = "."
 
 [[redirects]]
   from = "/*"
