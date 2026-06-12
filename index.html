@@ -1364,30 +1364,49 @@ async function startChatWithAgent(agentId, agentName){
   document.getElementById('support-modal-overlay').style.display='none';
   activeSupportAgent={id:agentId,name:agentName};
   const chatHtml=`
-  <div id="chat-overlay" onclick="if(event.target===this)document.getElementById('chat-overlay').remove()" style="position:fixed;inset:0;background:rgba(13,27,42,0.7);z-index:500;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 22px 22px 0;backdrop-filter:blur(4px);">
-    <div style="background:var(--white,#fff);border-radius:16px;width:340px;height:480px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <div style="background:linear-gradient(135deg,#0D1B2A,#243B55);border-radius:16px 16px 0 0;padding:14px 16px;display:flex;align-items:center;gap:10px;">
-        <div style="width:34px;height:34px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:15px;">👤</div>
-        <div style="flex:1;"><div style="color:#fff;font-size:13px;font-weight:700;">${escapeHtml(agentName)} <span style="font-size:11px;opacity:.8;">(${escapeHtml(agentId)})</span></div></div>
-        <button onclick="closeSupportChat()" style="background:rgba(255,255,255,0.1);border:none;width:26px;height:26px;border-radius:50%;color:#fff;cursor:pointer;font-size:14px;">×</button>
-      </div>
-      <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;">
-        <div style="background:#F2F0EB;border-radius:10px 10px 10px 2px;padding:9px 12px;max-width:80%;font-size:13px;">Connecting to support...</div>
-      </div>
-      <div style="padding:10px 12px;border-top:1px solid #E0DDD5;display:flex;flex-direction:column;gap:8px;position:relative;">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button onclick="toggleEmojiPicker()" style="background:#F2F0EB;border:none;border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;">😊</button>
-          <button onclick="document.getElementById('chat-image-file').click()" style="background:#F2F0EB;border:none;border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;">📷</button>
-          <input type="file" id="chat-image-file" accept="image/*" style="display:none" onchange="chatImageChosen(event)">
+  <div id="chat-overlay" style="position:fixed;inset:0;z-index:500;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 22px 22px 0;pointer-events:none;">
+    <div style="background:#ECE5DD;border-radius:16px;width:360px;height:560px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.35);pointer-events:all;overflow:hidden;">
+
+      <!-- WhatsApp-style header -->
+      <div style="background:#075E54;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <button onclick="closeSupportChat()" style="background:none;border:none;color:rgba(255,255,255,0.8);font-size:18px;cursor:pointer;padding:0 4px 0 0;line-height:1;">‹</button>
+        <div style="width:38px;height:38px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
+        <div style="flex:1;min-width:0;">
+          <div style="color:#fff;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(agentName)}</div>
+          <div id="chat-status-line" style="color:rgba(255,255,255,0.7);font-size:11px;">online</div>
         </div>
-        <div id="chat-emoji-picker" style="display:none;position:absolute;bottom:72px;left:12px;background:#fff;border:1px solid #E0DDD5;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:10px;gap:8px;flex-wrap:wrap;width:260px;z-index:510;">
-          ${['😀','😂','😍','🥰','😎','👍','🙏','🎉','🔥','💎'].map(e=>`<button type="button" onclick="appendEmoji('${e}')" style="background:#F2F0EB;border:none;border-radius:10px;padding:8px 10px;font-size:16px;cursor:pointer;">${e}</button>`).join('')}
-        </div>
-        <div style="display:flex;gap:8px;">
-          <input id="chat-input" type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendChatMsg()" style="flex:1;border:1px solid #E0DDD5;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;font-family:inherit;">
-          <button onclick="sendChatMsg()" style="background:#0D1B2A;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;">Send</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="toggleChatSearch()" title="Search" style="background:none;border:none;color:rgba(255,255,255,0.8);font-size:16px;cursor:pointer;padding:4px;">🔍</button>
         </div>
       </div>
+
+      <!-- Search bar (hidden by default) -->
+      <div id="chat-search-bar" style="display:none;background:#fff;padding:6px 12px;border-bottom:1px solid #ddd;flex-shrink:0;">
+        <input id="chat-search-input" type="text" placeholder="Search messages..." oninput="filterChatMessages()" style="width:100%;border:none;outline:none;font-size:13px;font-family:inherit;background:transparent;">
+      </div>
+
+      <!-- Chat background with WhatsApp pattern -->
+      <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:4px;background:#ECE5DD url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22><text y=%2230%22 font-size=%2220%22 opacity=%220.04%22>💎</text></svg>') repeat;">
+        <div style="background:rgba(255,255,255,0.85);border-radius:10px;padding:8px 12px;max-width:85%;font-size:12px;color:#555;align-self:center;text-align:center;margin:4px 0 8px;">Connecting to support...</div>
+      </div>
+
+      <!-- Typing indicator -->
+      <div id="chat-typing" style="display:none;padding:4px 16px;font-size:11px;color:#075E54;font-style:italic;flex-shrink:0;background:#ECE5DD;">Agent is typing...</div>
+
+      <!-- Emoji picker -->
+      <div id="chat-emoji-picker" style="display:none;background:#fff;border-top:1px solid #ddd;padding:8px;flex-wrap:wrap;gap:4px;flex-shrink:0;max-height:100px;overflow-y:auto;">
+        ${['😀','😂','😍','🥰','😎','😢','😡','👍','👎','🙏','❤️','🎉','🔥','💎','💰','✅','❌','⚡','🌟','💬'].map(e=>`<button type="button" onclick="appendEmoji('${e}')" style="background:#f0f0f0;border:none;border-radius:8px;padding:5px 8px;font-size:16px;cursor:pointer;">${e}</button>`).join('')}
+      </div>
+
+      <!-- Input area -->
+      <div style="background:#f0f2f5;padding:8px 10px;display:flex;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <button onclick="toggleEmojiPicker()" title="Emoji" style="background:none;border:none;width:38px;height:38px;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#54656f;border-radius:50%;transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.06)'" onmouseout="this.style.background='none'">😊</button>
+        <button onclick="document.getElementById('chat-image-file').click()" title="Attach" style="background:none;border:none;width:38px;height:38px;font-size:22px;font-weight:300;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#54656f;border-radius:50%;transition:background 0.15s;line-height:1;" onmouseover="this.style.background='rgba(0,0,0,0.06)'" onmouseout="this.style.background='none'">+</button>
+        <input type="file" id="chat-image-file" accept="image/*" style="display:none" onchange="chatImageChosen(event)">
+        <textarea id="chat-input" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg();}" oninput="autoResizeChatInput(this)" style="flex:1;border:none;border-radius:24px;padding:9px 14px;font-size:13px;outline:none;font-family:inherit;resize:none;max-height:80px;line-height:1.4;background:#fff;box-shadow:none;"></textarea>
+        <button id="chat-send-btn" onclick="sendChatMsg()" style="background:#00a884;border:none;border-radius:50%;width:38px;height:38px;color:#fff;cursor:pointer;font-size:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='#008f72'" onmouseout="this.style.background='#00a884'">➤</button>
+      </div>
+
     </div>
   </div>`;
   const old=document.getElementById('chat-overlay');
@@ -1412,8 +1431,18 @@ async function ensureSupportConversation(agentId,agentName){
   const isValidUUID = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id||'');
   if(savedId && !isValidUUID(savedId)){ localStorage.removeItem(storageKey); }
   if(savedId && isValidUUID(savedId)){
-    const existing=await sbFetch(`chat_sessions?id=eq.${encodeURIComponent(savedId)}&status=neq.closed&select=id&limit=1`);
+    // ✅ WhatsApp logic: if session exists (even closed), reopen it
+    const existing=await sbFetch(`chat_sessions?id=eq.${encodeURIComponent(savedId)}&select=id,status&limit=1`);
     if(existing&&existing[0]){
+      if(existing[0].status==='closed'){
+        // Reopen closed session like WhatsApp
+        await sbFetch(`chat_sessions?id=eq.${encodeURIComponent(savedId)}`,{
+          method:'PATCH',
+          body:JSON.stringify({status:'active',updated_at:new Date().toISOString()})
+        });
+        const sl=document.getElementById('chat-status-line');
+        if(sl) sl.textContent='Reconnected';
+      }
       activeSupportSessionId=existing[0].id;
       return activeSupportSessionId;
     }
@@ -1458,17 +1487,33 @@ function isImageUrl(value){
   return /^(https?:\/\/[^\s]+\.(png|jpe?g|gif|webp|avif|svg))(\?.*)?$/i.test(value);
 }
 
-function renderChatMessage(content,role){
+function formatChatTime(ts){
+  if(!ts) return '';
+  try{
+    const d=new Date(ts);
+    return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
+  }catch(e){return '';}
+}
+
+function renderChatMessage(content,role,ts){
   const isMine=role==='customer';
-  const label = isMine ? 'Customer' : role==='system' ? 'System' : 'Agent';
+  const time=formatChatTime(ts);
+  const tick = isMine ? '<span style="color:#4FC3F7;font-size:11px;margin-left:3px;">✓✓</span>' : '';
+  const bubbleBg = isMine ? '#DCF8C6' : '#ffffff';
+  const bubbleRadius = isMine ? '12px 12px 2px 12px' : '12px 12px 12px 2px';
+  const align = isMine ? 'align-self:flex-end;' : 'align-self:flex-start;';
+  const shadow = '0 1px 2px rgba(0,0,0,0.13)';
+
   if(isImageUrl(content)){
-    return `<div style="max-width:80%;background:${isMine?'#0D1B2A':'#F2F0EB'};color:${isMine?'#fff':'#1A1814'};${isMine?'border-radius:10px 10px 2px 10px;':'border-radius:10px 10px 10px 2px;'}padding:9px 12px;overflow:hidden;">`+
-           `<img src="${escapeAttr(content)}" alt="image" style="max-width:100%;max-height:240px;object-fit:contain;border-radius:12px;display:block;">`+
-           `<div style="font-size:10px;opacity:0.55;margin-top:6px;">${label}</div></div>`;
+    return `<div style="${align}max-width:75%;background:${bubbleBg};border-radius:${bubbleRadius};padding:4px 4px 6px;box-shadow:${shadow};overflow:hidden;">
+      <img src="${escapeAttr(content)}" alt="image" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:8px;display:block;">
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:3px;padding:2px 4px 0;font-size:10px;color:#999;">${time}${tick}</div>
+    </div>`;
   }
-  return `<div style="max-width:80%;background:${isMine?'#0D1B2A':'#F2F0EB'};color:${isMine?'#fff':'#1A1814'};${isMine?'border-radius:10px 10px 2px 10px;':'border-radius:10px 10px 10px 2px;'}padding:9px 12px;overflow-wrap:break-word;word-break:break-word;">`+
-         `<div>${escapeHtml(content)}</div>`+
-         `<div style="font-size:10px;opacity:0.55;margin-top:4px;">${label}</div></div>`;
+  return `<div style="${align}max-width:75%;background:${bubbleBg};border-radius:${bubbleRadius};padding:7px 10px 5px;box-shadow:${shadow};overflow-wrap:break-word;word-break:break-word;">
+    <div style="font-size:13px;line-height:1.45;color:#111;">${escapeHtml(content)}</div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:3px;margin-top:2px;font-size:10px;color:#999;">${time}${tick}</div>
+  </div>`;
 }
 
 async function loadSupportMessages(){
@@ -1476,12 +1521,18 @@ async function loadSupportMessages(){
   const msgs=document.getElementById('chat-msgs');
   if(!msgs)return;
   const rows=await sbFetch(`chat_messages?session_id=eq.${encodeURIComponent(activeSupportSessionId)}&select=sender_role,content,created_at&order=created_at.asc`);
-  msgs.innerHTML=(rows||[]).filter(m=>m.sender_role!=='system').map(m=>{
+  let lastDate='';
+  const html=(rows||[]).filter(m=>m.sender_role!=='system').map(m=>{
     const role=m.sender_role;
-    const isMine=role==='customer';
-    const align=isMine?'align-self:flex-end;':'';
-    return `<div style="${align}">${renderChatMessage(m.content,role)}</div>`;
+    const d=m.created_at?new Date(m.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+    let dateSep='';
+    if(d && d!==lastDate){
+      lastDate=d;
+      dateSep=`<div style="align-self:center;background:rgba(255,255,255,0.85);border-radius:10px;padding:3px 10px;font-size:11px;color:#555;margin:6px 0;">${d}</div>`;
+    }
+    return dateSep+`<div style="${role==='customer'?'align-self:flex-end;':'align-self:flex-start;'}display:contents;">${renderChatMessage(m.content,role,m.created_at)}</div>`;
   }).join('');
+  msgs.innerHTML=html||`<div style="align-self:center;background:rgba(255,255,255,0.85);border-radius:10px;padding:6px 14px;font-size:12px;color:#555;margin:8px 0;">No messages yet</div>`;
   msgs.scrollTop=msgs.scrollHeight;
 }
 
@@ -1496,6 +1547,30 @@ function toggleEmojiPicker(){
   const picker=document.getElementById('chat-emoji-picker');
   if(!picker)return;
   picker.style.display = picker.style.display==='none'?'flex':'none';
+}
+
+function autoResizeChatInput(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,80)+'px';
+}
+
+function toggleChatSearch(){
+  const bar=document.getElementById('chat-search-bar');
+  if(!bar)return;
+  const isOpen=bar.style.display!=='none';
+  bar.style.display=isOpen?'none':'flex';
+  if(!isOpen) document.getElementById('chat-search-input')?.focus();
+  else filterChatMessages('');
+}
+
+function filterChatMessages(){
+  const q=(document.getElementById('chat-search-input')?.value||'').toLowerCase().trim();
+  const msgs=document.getElementById('chat-msgs');
+  if(!msgs)return;
+  msgs.querySelectorAll('[data-msg-content]').forEach(el=>{
+    const txt=(el.dataset.msgContent||'').toLowerCase();
+    el.style.opacity = (!q||txt.includes(q)) ? '1' : '0.2';
+  });
 }
 
 async function chatImageChosen(e){
