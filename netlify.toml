@@ -2,16 +2,12 @@
   publish = "."
 
 [[redirects]]
-  from = "/*.png"
-  to = "/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/*.jpg"
-  to = "/:splat"
+  from = "/manage-x7k29qz"
+  to = "/manage-x7k29qz.html"
   status = 200
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
