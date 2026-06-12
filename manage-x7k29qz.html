@@ -124,8 +124,18 @@ header{background:var(--navy);position:sticky;top:0;z-index:100;border-bottom:1p
 footer{background:var(--navy);color:rgba(255,255,255,0.4);text-align:center;padding:18px;font-size:12px;}
 footer span{color:var(--gold-light);}
 
-/* CSV IMPORT */
-.csv-drop-zone{border:2px dashed var(--gray-200);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--gray-100);}
+/* ===== CUSTOM CONFIRM DIALOG ===== */
+.custom-confirm-overlay{position:fixed;inset:0;background:rgba(13,27,42,0.55);z-index:9000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+.custom-confirm-overlay.open{display:flex;}
+.custom-confirm-modal{background:#fff;border-radius:16px;padding:28px 28px 20px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(13,27,42,0.25);text-align:center;}
+.custom-confirm-icon{font-size:36px;margin-bottom:12px;}
+.custom-confirm-msg{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:8px;line-height:1.4;}
+.custom-confirm-sub{font-size:12px;color:var(--text-muted);margin-bottom:20px;}
+.custom-confirm-btns{display:flex;gap:10px;}
+.custom-confirm-btn-cancel{flex:1;padding:10px;border:1px solid var(--gray-200);background:var(--gray-100);color:var(--text-muted);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.custom-confirm-btn-ok{flex:1;padding:10px;border:none;background:var(--danger);color:#fff;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.custom-confirm-btn-cancel:hover{background:var(--gray-200);}
+.custom-confirm-btn-ok:hover{opacity:0.88;}
 .csv-drop-zone:hover,.csv-drop-zone.drag-over{border-color:var(--gold);background:#FFFBF0;}
 .csv-drop-icon{font-size:36px;margin-bottom:10px;}
 .csv-drop-text{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
@@ -386,12 +396,11 @@ footer span{color:var(--gold-light);}
           <div class="main-topbar-title" id="topbar-title">📋 订单管理</div>
           <div class="main-topbar-sub" id="topbar-sub">管理所有交易订单，实时同步云端</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div id="auto-refresh-status" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);">
-            <span id="auto-refresh-dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse-dot 2s infinite;"></span>
-            <span id="auto-refresh-label">自动刷新中</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div id="rt-status-pill" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);background:var(--gray-100);border:1px solid var(--gray-200);border-radius:20px;padding:5px 12px;transition:all 0.3s;">
+            <span id="rt-status-dot" style="width:8px;height:8px;border-radius:50%;background:#9ca3af;display:inline-block;flex-shrink:0;"></span>
+            <span id="rt-status-label">连接中...</span>
           </div>
-          <button onclick="toggleAutoRefresh()" id="auto-refresh-btn" style="background:var(--navy);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;">⏸ 暂停</button>
         </div>
       </div>
 
@@ -485,25 +494,15 @@ footer span{color:var(--gold-light);}
 
     <!-- TAB 4: CUSTOMER SUPPORT MANAGEMENT -->
     <div class="admin-tab-panel" id="panel-support">
-      <!-- 客服账号管理区（统一，跨设备） -->
-      <div class="admin-section" style="margin-bottom:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <div class="admin-section-title" style="margin-bottom:0;">👤 客服账号管理</div>
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">添加/删除客服账号，前台和后台统一使用，跨设备自动同步。不显示在线状态。</div>
-        <div id="agent-list-panel" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <input class="mini-input" id="agent-new-id" placeholder="ID: agent_jane" style="width:150px;">
-          <input class="mini-input" id="agent-new-name" placeholder="显示名称: Jane" style="flex:1;min-width:150px;">
-          <button class="mini-btn" onclick="addSupportAgent()">+ 添加客服</button>
-          <button class="mini-btn" onclick="saveSupportAgents()" style="background:var(--navy);color:#fff;">💾 保存同步</button>
-        </div>
-      </div>
-      <div class="admin-section" style="padding:0;overflow:hidden">
-        <!-- 国家选择侧栏 -->
-        <div style="display:flex;min-height:600px;">
-          <div style="width:180px;flex-shrink:0;border-right:1px solid var(--gray-200);padding:12px 8px;background:var(--off-white);">
-            <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;padding:4px 8px 10px;">客户国家</div>
+      <!-- WhatsApp三栏布局 -->
+      <div style="display:flex;height:calc(100vh - 180px);min-height:560px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);overflow:hidden;">
+
+        <!-- 栏1: 国家筛选 -->
+        <div class="wa-col-filter" style="width:160px;flex-shrink:0;border-right:1px solid var(--gray-200);background:var(--off-white);display:flex;flex-direction:column;">
+          <div style="padding:14px 10px 8px;border-bottom:1px solid var(--gray-200);">
+            <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.07em;">客户国家</div>
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:8px 6px;">
             <button class="order-vtab active" id="cs-tab-nigeria" onclick="switchSupportCountry('nigeria',this)">🇳🇬 尼日利亚</button>
             <button class="order-vtab" id="cs-tab-ghana" onclick="switchSupportCountry('ghana',this)">🇬🇭 加纳</button>
             <button class="order-vtab" id="cs-tab-benin" onclick="switchSupportCountry('benin',this)">🇧🇯 贝宁</button>
@@ -513,13 +512,48 @@ footer span{color:var(--gold-light);}
             <button class="order-vtab" id="cs-tab-india" onclick="switchSupportCountry('india',this)">🇮🇳 印度</button>
             <button class="order-vtab" id="cs-tab-usdt" onclick="switchSupportCountry('usdt',this)">💎 USDT兑换</button>
           </div>
-          <!-- 右侧内容区 -->
-          <div style="flex:1;min-width:0;padding:20px;">
-            <div id="support-panel-content">
-              <div class="orders-loading">选择左侧国家查看客服信息</div>
+          <!-- 客服账号管理折叠 -->
+          <div style="border-top:1px solid var(--gray-200);">
+            <button onclick="toggleAgentMgr()" style="width:100%;text-align:left;border:none;background:none;padding:10px 12px;font-size:11px;font-weight:700;color:var(--gray-400);cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-transform:uppercase;letter-spacing:0.05em;">
+              <span>👤 客服账号</span><span id="agent-mgr-chevron">▸</span>
+            </button>
+            <div id="agent-mgr-panel" style="display:none;padding:0 8px 10px;border-top:1px solid var(--gray-100);">
+              <div id="agent-list-panel" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px;margin-top:8px;"></div>
+              <input class="mini-input" id="agent-new-id" placeholder="ID: agent_jane" style="width:100%;margin-bottom:4px;font-size:11px;">
+              <input class="mini-input" id="agent-new-name" placeholder="显示名: Jane" style="width:100%;margin-bottom:6px;font-size:11px;">
+              <div style="display:flex;gap:4px;">
+                <button class="mini-btn" onclick="addSupportAgent()" style="flex:1;font-size:11px;padding:5px 6px;">+ 添加</button>
+                <button class="mini-btn" onclick="saveSupportAgents()" style="flex:1;font-size:11px;padding:5px 6px;background:var(--navy);color:#fff;">💾</button>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- 栏2: 会话列表 -->
+        <div style="width:290px;flex-shrink:0;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;background:#fff;">
+          <div style="padding:14px 14px 10px;border-bottom:1px solid var(--gray-200);">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div id="support-inbox-header">
+                <div style="font-size:14px;font-weight:700;color:var(--navy);">会话列表</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:1px;" id="support-session-counts">加载中...</div>
+              </div>
+              <div id="rt-support-pill" style="display:flex;align-items:center;gap:5px;background:var(--gray-100);border:1px solid var(--gray-200);border-radius:20px;padding:4px 10px;">
+                <span id="rt-support-dot" style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;animation:pulse-dot 1s infinite;flex-shrink:0;"></span>
+                <span id="rt-support-label" style="font-size:10px;font-weight:600;color:var(--text-muted);white-space:nowrap;">连接中...</span>
+              </div>
+            </div>
+          </div>
+          <div id="support-inbox-list" style="flex:1;overflow-y:auto;padding:8px 8px;">
+            <div class="orders-loading">加载中...</div>
+          </div>
+        </div>
+
+        <!-- 栏3: 聊天区 -->
+        <div id="support-thread" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--gray-400);font-size:14px;background:#EFE9DD url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%23EFE9DD%22 width=%22300%22 height=%22300%22/><circle cx=%22150%22 cy=%22150%22 r%3D%2260%22 fill%3D%22none%22 stroke%3D%22%23d4cecc%22 stroke-width%3D%221%22/></svg>') center/400px;">
+          <div style="font-size:36px;opacity:0.3;">💬</div>
+          <div style="font-size:14px;color:var(--gray-400);">选择一个会话开始回复</div>
+        </div>
+
       </div>
     </div>
 
@@ -1806,30 +1840,131 @@ let _autoRefreshTimer = null;
 let _autoRefreshEnabled = true;
 let _currentAdminTab = 'orders';
 
+// ============================================================
+// SUPABASE REALTIME — 替换30秒轮询
+// ============================================================
+let _realtimeWs = null;
+let _realtimeConnected = false;
+let _realtimeReconnectTimer = null;
+
+function _rtSetStatus(state) {
+  // state: 'connecting' | 'connected' | 'disconnected'
+  const dot = document.getElementById('rt-status-dot');
+  const label = document.getElementById('rt-status-label');
+  const pill = document.getElementById('rt-status-pill');
+  if (!dot || !label) return;
+  if (state === 'connected') {
+    dot.style.background = '#22c55e';
+    dot.style.animation = 'pulse-dot 2s infinite';
+    label.textContent = '实时连接';
+    if (pill) { pill.style.borderColor = 'rgba(34,197,94,0.4)'; pill.style.background = 'rgba(34,197,94,0.06)'; }
+  } else if (state === 'connecting') {
+    dot.style.background = '#f59e0b';
+    dot.style.animation = 'pulse-dot 1s infinite';
+    label.textContent = '连接中...';
+    if (pill) { pill.style.borderColor = 'var(--gray-200)'; pill.style.background = 'var(--gray-100)'; }
+  } else {
+    dot.style.background = '#ef4444';
+    dot.style.animation = 'none';
+    label.textContent = '已断开';
+    if (pill) { pill.style.borderColor = 'rgba(239,68,68,0.4)'; pill.style.background = 'rgba(239,68,68,0.06)'; }
+  }
+}
+
 function startAutoRefresh() {
+  // 启动 Supabase Realtime，同时保留一个60秒兜底轮询作为备份
+  _connectRealtime();
+  // 兜底：60秒轮询（仅在 Realtime 断开时有意义）
   if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
   _autoRefreshTimer = setInterval(() => {
-    if (_autoRefreshEnabled && _currentAdminTab === 'orders') loadOrders();
-    if (_autoRefreshEnabled && _currentAdminTab === 'support') loadSupportConversations();
-  }, 30000);
+    if (!_realtimeConnected) {
+      if (_currentAdminTab === 'orders') loadOrders();
+      if (_currentAdminTab === 'support') loadSupportConversations();
+    }
+  }, 10000);
+}
+
+function _connectRealtime() {
+  if (_realtimeWs) { try { _realtimeWs.close(); } catch(e) {} _realtimeWs = null; }
+  _rtSetStatus('connecting');
+  _rtSyncSupportStatus('connecting');
+
+  const wsUrl = SUPABASE_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
+  try {
+    const ws = new WebSocket(wsUrl);
+    _realtimeWs = ws;
+
+    ws.onopen = () => {
+      _realtimeConnected = true;
+      _rtSetStatus('connected');
+      _rtSyncSupportStatus('connected');
+      // 订阅 orders 表
+      // 新版 Supabase Realtime 格式
+      ws.send(JSON.stringify({ topic: 'realtime:public:orders', event: 'phx_join', payload: { config: { broadcast: { self: true }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'orders' }] } }, ref: '1' }));
+      // 订阅 chat_messages 表
+      ws.send(JSON.stringify({ topic: 'realtime:public:chat_messages', event: 'phx_join', payload: { config: { broadcast: { self: true }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'chat_messages' }] } }, ref: '2' }));
+      // 订阅 chat_sessions 表
+      ws.send(JSON.stringify({ topic: 'realtime:public:chat_sessions', event: 'phx_join', payload: { config: { broadcast: { self: true }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'chat_sessions' }] } }, ref: '3' }));
+      // 心跳
+      _startHeartbeat(ws);
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        const topic = msg.topic || '';
+        const event = msg.event || '';
+        // 收到数据库变化推送（兼容新旧版Supabase Realtime格式）
+        const isDbChange = event === 'INSERT' || event === 'UPDATE' || event === 'DELETE'
+          || (event === 'postgres_changes' && msg.payload?.data?.type);
+        const changeType = isDbChange ? (msg.payload?.data?.type || event) : null;
+        const changeTopic = topic || (msg.payload?.data?.table ? 'realtime:public:' + msg.payload.data.table : '');
+        if (isDbChange) {
+          if (topic.includes('orders') || changeTopic.includes('orders')) {
+            loadOrders();
+          }
+          if (topic.includes('chat_messages') || topic.includes('chat_sessions')
+            || changeTopic.includes('chat_messages') || changeTopic.includes('chat_sessions')) {
+            // 刷新会话列表
+            loadSupportConversations();
+            // 同时立即刷新当前打开的聊天窗口
+            if (currentSupportSessionId) loadSupportThread(currentSupportSessionId);
+          }
+        }
+      } catch(err) {}
+    };
+
+    ws.onerror = () => {
+      _realtimeConnected = false;
+      _rtSetStatus('disconnected');
+      _rtSyncSupportStatus('disconnected');
+    };
+
+    ws.onclose = () => {
+      _realtimeConnected = false;
+      _rtSetStatus('disconnected');
+      _rtSyncSupportStatus('disconnected');
+      // 5秒后重连
+      if (_realtimeReconnectTimer) clearTimeout(_realtimeReconnectTimer);
+      _realtimeReconnectTimer = setTimeout(() => _connectRealtime(), 5000);
+    };
+  } catch(err) {
+    _rtSetStatus('disconnected');
+  }
+}
+
+let _heartbeatInterval = null;
+function _startHeartbeat(ws) {
+  if (_heartbeatInterval) clearInterval(_heartbeatInterval);
+  _heartbeatInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'hb' }));
+    }
+  }, 25000);
 }
 
 function toggleAutoRefresh() {
-  _autoRefreshEnabled = !_autoRefreshEnabled;
-  const btn = document.getElementById('auto-refresh-btn');
-  const dot = document.getElementById('auto-refresh-dot');
-  const label = document.getElementById('auto-refresh-label');
-  if (_autoRefreshEnabled) {
-    btn.innerHTML = '⏸ 暂停';
-    btn.style.background = 'var(--navy)';
-    if (dot) { dot.style.background = '#22c55e'; dot.style.animation = 'pulse-dot 2s infinite'; }
-    if (label) label.textContent = '自动刷新中';
-  } else {
-    btn.innerHTML = '▶ 恢复';
-    btn.style.background = '#888';
-    if (dot) { dot.style.background = '#9ca3af'; dot.style.animation = 'none'; }
-    if (label) label.textContent = '已暂停';
-  }
+  // 兼容旧代码调用，现在无实际作用（已用 Realtime 替代）
 }
 // ================================
 
@@ -1886,7 +2021,7 @@ let supportSessions = [];
 let currentSupportSessionId = null;
 
 function initSupportPanel() {
-  loadSupportConversations();
+  loadSupportConversations(true);
 }
 
 function switchSupportCountry(countryId, el) {
@@ -1894,129 +2029,142 @@ function switchSupportCountry(countryId, el) {
   document.querySelectorAll('[id^="cs-tab-"]').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
   currentSupportSessionId = null;
-  loadSupportConversations();
+  // Reset chat area
+  const thread = document.getElementById('support-thread');
+  if (thread) thread.innerHTML = '<div style="font-size:36px;opacity:0.3;">💬</div><div style="font-size:14px;color:var(--gray-400);">选择一个会话开始回复</div>';
+  loadSupportConversations(true);
 }
 
 async function loadSupportConversations(forceRebuild = false){
-  const wrap=document.getElementById('support-panel-content');
-  if(!wrap)return;
   try{
-    const rows=await sbFetchAdmin(`chat_sessions?country_id=eq.${encodeURIComponent(currentSupportCountry)}&select=*&order=updated_at.desc`);
+    const rows=await sbFetchAdmin(`chat_sessions?country_id=eq.${encodeURIComponent(currentSupportCountry)}&select=*,last_message:chat_messages(content,created_at,sender_role)&order=updated_at.desc`).catch(()=>
+      sbFetchAdmin(`chat_sessions?country_id=eq.${encodeURIComponent(currentSupportCountry)}&select=*&order=updated_at.desc`)
+    );
     supportSessions=rows||[];
-    // If panel not built yet or forced, rebuild fully; otherwise just update inbox list silently
-    const inboxList = document.getElementById('support-inbox-list');
-    if(!inboxList || forceRebuild){
-      renderSupportInbox();
-    } else {
-      renderSupportInboxListOnly();
-    }
+    // 图1 + 附加：批量查询IP国家（后台异步，不阻塞渲染）
+    _renderSupportInboxList();
+    enrichSessionsWithIpCountry(supportSessions).then(() => _renderSupportInboxList());
     if(currentSupportSessionId) loadSupportThread(currentSupportSessionId);
   }catch(e){
-    if(!document.getElementById('support-inbox-list')){
-      wrap.innerHTML=`<div class="orders-empty">客服系统未连接：${escapeHtml(e.message)}<br><br>请确认 Supabase 已创建 chat_sessions / chat_messages，并允许后台账号读写。</div>`;
-    }
+    const list = document.getElementById('support-inbox-list');
+    if(list) list.innerHTML=`<div class="orders-empty" style="font-size:12px;padding:20px 10px;">连接失败：${escapeHtml(e.message)}</div>`;
   }
 }
 
-function renderSupportInbox(){
-  const country=SUPPORT_COUNTRIES.find(c=>c.id===currentSupportCountry)||SUPPORT_COUNTRIES[0];
-  const openCount=supportSessions.filter(c=>c.status!=='closed').length;
-  const closedCount=supportSessions.filter(c=>c.status==='closed').length;
-  const _renderCard = c => {
-    const active = c.id === currentSupportSessionId;
-    const status = c.status==='closed'
-      ? '<span style="background:#F3F4F6;color:#6B7280;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">已关闭</span>'
-      : c.status==='waiting'
-      ? '<span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">等待中</span>'
-      : c.status==='taken_over'
-      ? '<span style="background:#DBEAFE;color:#1E40AF;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">已接管</span>'
-      : '<span style="background:#D1FAE5;color:#065F46;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">处理中</span>';
-    return `<button onclick="openSupportThread('${escapeAttr(c.id)}')" style="width:100%;text-align:left;border:none;border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;background:${active?'var(--navy)':'var(--gray-100)'};color:${active?'#fff':'var(--text)'};">
-      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <strong style="font-size:13px;">${escapeHtml(c.customer_name||c.customer_email||'Guest')}</strong>${status}
-      </div>
-      <div style="font-size:11px;opacity:0.72;margin-top:4px;">客服来源：${escapeHtml(c.agent_id||'未分配')} · ${escapeHtml(formatSupportTime(c.updated_at||c.created_at))}</div>
-    </button>`;
-  };
-  const _open = supportSessions.filter(c => c.status !== 'closed');
-  const _closed = supportSessions.filter(c => c.status === 'closed');
-  const _closedSection = _closed.length ? `
-    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin:12px 0 6px;padding-top:12px;border-top:1px solid var(--gray-200);">历史记录 · ${_closed.length}</div>
-    ${_closed.map(_renderCard).join('')}` : '';
-  const listHtml = _open.length || _closed.length
-    ? _open.map(_renderCard).join('') + _closedSection
-    : '<div class="orders-empty">当前国家暂无客服会话</div>';
-
-  document.getElementById('support-panel-content').innerHTML=`
-    <div style="display:flex;gap:16px;height:640px;">
-      <div style="width:310px;flex-shrink:0;border-right:1px solid var(--gray-200);padding-right:16px;overflow-y:auto;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div id="support-inbox-header">
-            <div style="font-size:16px;font-weight:700;color:var(--navy);">${country.flag} ${country.name} 客服会话</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">处理中 ${openCount} · 已关闭 ${closedCount}</div>
-          </div>
-          <button class="mini-btn" onclick="loadSupportConversations(true)" style="font-size:12px;padding:7px 10px;">刷新</button>
-        </div>
-        <div id="support-inbox-list">${listHtml}</div>
-      </div>
-      <div id="support-thread" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;color:var(--gray-400);font-size:14px;">
-        选择一个会话开始回复
-      </div>
-    </div>`;
-}
-
-// Silent update: only refresh the inbox list without rebuilding the full panel
-function renderSupportInboxListOnly(){
+function _renderSupportInboxList() {
   const list = document.getElementById('support-inbox-list');
-  const header = document.getElementById('support-inbox-header');
+  const header = document.getElementById('support-session-counts');
   if (!list) return;
-  const country=SUPPORT_COUNTRIES.find(c=>c.id===currentSupportCountry)||SUPPORT_COUNTRIES[0];
-  const openCount=supportSessions.filter(c=>c.status!=='closed').length;
-  const closedCount=supportSessions.filter(c=>c.status==='closed').length;
-  if (header) header.innerHTML = `
-    <div style="font-size:16px;font-weight:700;color:var(--navy);">${country.flag} ${country.name} 客服会话</div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">处理中 ${openCount} · 已关闭 ${closedCount}</div>`;
-  const open = supportSessions.filter(c => c.status !== 'closed');
-  const closed = supportSessions.filter(c => c.status === 'closed');
+
+  const country = SUPPORT_COUNTRIES.find(c=>c.id===currentSupportCountry)||SUPPORT_COUNTRIES[0];
+  const openSessions = supportSessions.filter(c => c.status !== 'closed');
+  const closedSessions = supportSessions.filter(c => c.status === 'closed');
+  if (header) header.textContent = `处理中 ${openSessions.length} · 已关闭 ${closedSessions.length}`;
+
   const renderCard = c => {
     const active = c.id === currentSupportSessionId;
-    const status = c.status==='closed'
-      ? '<span style="background:#F3F4F6;color:#6B7280;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">已关闭</span>'
+    const _rawName = c.customer_name || c.customer_email || 'Guest';
+    const name = _rawName.includes('@') ? (_rawName.slice(0, 6) + '...') : _rawName;
+    const initials = _rawName.charAt(0).toUpperCase();
+    const timeStr = formatSupportTime(c.updated_at || c.created_at);
+
+    const statusDot = c.status==='closed'
+      ? 'background:#9ca3af;'
       : c.status==='waiting'
-      ? '<span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">等待中</span>'
+      ? 'background:#f59e0b;'
       : c.status==='taken_over'
-      ? '<span style="background:#DBEAFE;color:#1E40AF;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">已接管</span>'
-      : '<span style="background:#D1FAE5;color:#065F46;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;">处理中</span>';
-    return `<button onclick="openSupportThread('${escapeAttr(c.id)}')" style="width:100%;text-align:left;border:none;border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;background:${active?'var(--navy)':'var(--gray-100)'};color:${active?'#fff':'var(--text)'};">
-      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <strong style="font-size:13px;">${escapeHtml(c.customer_name||c.customer_email||'Guest')}</strong>${status}
+      ? 'background:#3b82f6;'
+      : 'background:#22c55e;animation:pulse-dot 2s infinite;';
+
+    const statusLabel = c.status==='closed' ? '已关闭'
+      : c.status==='waiting' ? '等待中'
+      : c.status==='taken_over' ? '已接管'
+      : '处理中';
+
+    const lastMsg = c.last_message?.[0]?.content || c.last_message?.content || '';
+    const previewText = lastMsg ? (lastMsg.length > 32 ? lastMsg.slice(0,32)+'…' : lastMsg) : '暂无消息';
+
+    // 图1 + 附加：IP国家显示
+    const ip = c.customer_ip || c.ip_address || c.ip || '';
+    let geoHtml = '';
+    if (c._geoCountry) {
+      // 已查到IP国家
+      const supportId = c._geoSupportId || 'usdt';
+      const supportInfo = SUPPORT_COUNTRIES.find(x => x.id === supportId);
+      const geoLabel = supportInfo ? supportInfo.flag + ' ' + supportInfo.name : '💎 USDT兑换';
+      geoHtml = `<span style="font-size:10px;background:rgba(13,27,42,0.06);border-radius:4px;padding:1px 5px;color:var(--navy);font-weight:600;white-space:nowrap;" title="IP: ${escapeHtml(ip)}">${escapeHtml(c._geoFlag||'')} ${escapeHtml(c._geoCountry)} → ${escapeHtml(geoLabel)}</span>`;
+    } else if (ip) {
+      // 还在查询中或查询失败，显示原始IP
+      geoHtml = `<span style="font-size:10px;color:var(--gray-400);white-space:nowrap;">${escapeHtml(ip)}</span>`;
+    }
+
+    return `<button onclick="openSupportThread('${escapeAttr(c.id)}')" style="width:100%;text-align:left;border:none;border-bottom:1px solid var(--gray-100);padding:11px 10px;cursor:pointer;background:${active?'rgba(13,27,42,0.06)':'transparent'};display:flex;gap:10px;align-items:center;transition:background 0.15s;" onmouseover="if('${c.id}'!==currentSupportSessionId)this.style.background='var(--gray-100)'" onmouseout="if('${c.id}'!==currentSupportSessionId)this.style.background='transparent'">
+      <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--navy-light));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;">${escapeHtml(initials)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <div style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${escapeHtml(name)}</div>
+          <div style="font-size:10px;color:var(--gray-400);white-space:nowrap;flex-shrink:0;">${escapeHtml(timeStr)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+          <span style="width:6px;height:6px;border-radius:50%;flex-shrink:0;${statusDot}display:inline-block;"></span>
+          <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(previewText)}</div>
+        </div>
+        ${geoHtml ? `<div style="margin-top:3px;">${geoHtml}</div>` : ''}
       </div>
-      <div style="font-size:11px;opacity:0.72;margin-top:4px;">客服来源：${escapeHtml(c.agent_id||'未分配')} · ${escapeHtml(formatSupportTime(c.updated_at||c.created_at))}</div>
     </button>`;
   };
-  const closedSection = closed.length ? `
-    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin:12px 0 6px;padding-top:12px;border-top:1px solid var(--gray-200);">历史记录 · ${closed.length}</div>
-    ${closed.map(renderCard).join('')}` : '';
-  list.innerHTML = open.length || closed.length
-    ? open.map(renderCard).join('') + closedSection
-    : '<div class="orders-empty">当前国家暂无客服会话</div>';
+
+  const closedSection = closedSessions.length ? `
+    <div style="border-top:1px solid var(--gray-200);margin-top:4px;">
+      <button onclick="toggleHistoryArchive()" id="history-archive-btn" style="width:100%;text-align:left;border:none;background:none;padding:10px 10px 8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:'DM Sans',sans-serif;">
+        <span style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;">历史记录 (${closedSessions.length})</span>
+        <span id="history-archive-chevron" style="font-size:11px;color:var(--gray-400);">▶</span>
+      </button>
+      <div id="history-archive-list" style="display:none;">
+        ${closedSessions.map(renderCard).join('')}
+      </div>
+    </div>` : '';
+
+  list.innerHTML = openSessions.length || closedSessions.length
+    ? openSessions.map(renderCard).join('') + closedSection
+    : `<div style="text-align:center;padding:40px 10px;color:var(--gray-400);font-size:13px;">当前国家暂无会话</div>`;
 }
 
+// 保留兼容旧代码调用
+function renderSupportInbox() { _renderSupportInboxList(); }
+function renderSupportInboxListOnly() { _renderSupportInboxList(); }
 
+
+
+// 聊天窗口消息轮询（兜底，3秒）
+let _threadPollTimer = null;
+function _startThreadPoll(id) {
+  if (_threadPollTimer) clearInterval(_threadPollTimer);
+  _threadPollTimer = setInterval(() => {
+    if (currentSupportSessionId === id) loadSupportThread(id);
+    else clearInterval(_threadPollTimer);
+  }, 2000);
+}
+function _stopThreadPoll() {
+  if (_threadPollTimer) { clearInterval(_threadPollTimer); _threadPollTimer = null; }
+}
 
 function openSupportThread(id){
-  currentSupportSessionId=id;
-  renderSupportInbox();
+  _stopThreadPoll();
+  currentSupportSessionId = id;
+  _renderSupportInboxList(); // 高亮选中
   loadSupportThread(id);
+  _startThreadPoll(id);
 }
 
 async function loadSupportThread(id){
-  const thread=document.getElementById('support-thread');
-  if(!thread)return;
-  const conv=supportSessions.find(c=>c.id===id);
-  if(!conv)return;
+  const thread = document.getElementById('support-thread');
+  if(!thread) return;
+  const conv = supportSessions.find(c=>c.id===id);
+  if(!conv) return;
+
   try{
-    const rows=await sbFetchAdmin(`chat_messages?session_id=eq.${encodeURIComponent(id)}&select=*&order=created_at.asc`);
+    const rows = await sbFetchAdmin(`chat_messages?session_id=eq.${encodeURIComponent(id)}&select=*&order=created_at.asc`);
     // Translate customer messages to Chinese
     const translatedRows = await Promise.all((rows||[]).map(async m => {
       if (m.sender_role === 'customer' && m.content && !/^(https?:\/\/|data:image\/)/.test(m.content.trim())) {
@@ -2025,75 +2173,102 @@ async function loadSupportThread(id){
       }
       return m;
     }));
-    const msgHtml=translatedRows.map(m=>{
-      const isAdmin=m.sender_role==='agent';
-      const align=isAdmin?'align-self:flex-end;':'';
-      const bg=isAdmin?'background:var(--navy);color:#fff;border-radius:10px 10px 2px 10px;':'background:var(--gray-100);color:var(--text);border-radius:10px 10px 10px 2px;';
+
+    const msgHtml = translatedRows.map(m => {
+      const isAgent = m.sender_role === 'agent';
+      const isSystem = m.sender_role === 'system';
       const isImg = /^(https?:\/\/[^\s]+\.(png|jpe?g|gif|webp|avif|svg))(\?.*)?$/i.test(m.content);
+
+      if (isSystem) {
+        return `<div style="text-align:center;margin:8px 0;">
+          <span style="background:rgba(0,0,0,0.08);color:#666;font-size:11px;padding:3px 12px;border-radius:12px;">${escapeHtml(m.content)}</span>
+        </div>`;
+      }
+
       let contentHtml;
       if (isImg) {
-        contentHtml = `<img src="${escapeAttr(m.content)}" alt="image" style="max-width:100%;max-height:260px;object-fit:contain;border-radius:12px;display:block;">`;
-      } else if (m.sender_role === 'agent' && m.original_content) {
-        // Agent: Chinese original on top, English translation below
+        contentHtml = `<img src="${escapeAttr(m.content)}" alt="image" style="max-width:220px;max-height:200px;object-fit:contain;border-radius:10px;display:block;cursor:pointer;" onclick="openOdLightbox('${escapeAttr(m.content)}')">`;
+      } else if (isAgent && m.original_content) {
         contentHtml = `<div style="overflow-wrap:break-word;word-break:break-word;">${escapeHtml(m.original_content)}</div>
-          <div style="overflow-wrap:break-word;word-break:break-word;font-size:11px;opacity:0.6;margin-top:4px;border-top:1px solid rgba(255,255,255,0.2);padding-top:4px;">🌐 ${escapeHtml(m.content)}</div>`;
+          <div style="overflow-wrap:break-word;word-break:break-word;font-size:10px;opacity:0.65;margin-top:4px;border-top:1px solid rgba(255,255,255,0.25);padding-top:4px;">🌐 ${escapeHtml(m.content)}</div>`;
       } else if (m._translated) {
-        // Customer: original on top, Chinese translation below
         contentHtml = `<div style="overflow-wrap:break-word;word-break:break-word;">${escapeHtml(m.content)}</div>
-          <div style="overflow-wrap:break-word;word-break:break-word;font-size:11px;opacity:0.6;margin-top:4px;border-top:1px solid rgba(0,0,0,0.08);padding-top:4px;">🌐 ${escapeHtml(m._translated)}</div>`;
+          <div style="overflow-wrap:break-word;word-break:break-word;font-size:10px;opacity:0.65;margin-top:4px;border-top:1px solid rgba(0,0,0,0.1);padding-top:4px;">🌐 ${escapeHtml(m._translated)}</div>`;
       } else {
         contentHtml = `<div style="overflow-wrap:break-word;word-break:break-word;">${escapeHtml(m.content)}</div>`;
       }
-      const label = m.sender_role==='customer' ? '客户' : m.sender_role==='system' ? '系统' : '客服';
-      return `<div style="${bg}${align}padding:9px 12px;max-width:78%;font-size:13px;overflow:hidden;">
-        ${contentHtml}
-        <div style="font-size:10px;opacity:0.55;margin-top:4px;">${label} · ${escapeHtml(formatSupportTime(m.created_at))}</div>
-      </div>`;
+
+      const timeStr = formatSupportTime(m.created_at);
+
+      if (isAgent) {
+        return `<div style="display:flex;justify-content:flex-end;margin:2px 0;">
+          <div style="max-width:72%;background:#D9FDD3;color:#111;padding:8px 12px;border-radius:12px 2px 12px 12px;font-size:13px;box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+            ${contentHtml}
+            <div style="font-size:10px;color:#667;margin-top:4px;text-align:right;">${escapeHtml(timeStr)} ✓</div>
+          </div>
+        </div>`;
+      } else {
+        return `<div style="display:flex;justify-content:flex-start;margin:2px 0;">
+          <div style="max-width:72%;background:#fff;color:#111;padding:8px 12px;border-radius:2px 12px 12px 12px;font-size:13px;box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+            ${contentHtml}
+            <div style="font-size:10px;color:#999;margin-top:4px;">${escapeHtml(timeStr)}</div>
+          </div>
+        </div>`;
+      }
     }).join('');
-    const existingThread = document.getElementById('support-thread-messages');
-    if (existingThread && existingThread.dataset.sessionId === id) {
-      // Just update the messages, don't rebuild the whole panel
-      existingThread.innerHTML = msgHtml || '<div class="orders-empty">暂无消息</div>';
-      const box = existingThread;
-      const wasAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-      if(wasAtBottom) box.scrollTop = box.scrollHeight;
+
+    // 如果已经是同一个会话的thread，只更新消息区
+    const existingMsgArea = document.getElementById('support-thread-messages');
+    if (existingMsgArea && existingMsgArea.dataset.sessionId === id) {
+      existingMsgArea.innerHTML = msgHtml || '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">暂无消息</div>';
+      const wasAtBottom = existingMsgArea.scrollHeight - existingMsgArea.scrollTop - existingMsgArea.clientHeight < 80;
+      if (wasAtBottom) existingMsgArea.scrollTop = existingMsgArea.scrollHeight;
       return;
     }
-    thread.innerHTML=`
-      <div style="width:100%;height:100%;display:flex;flex-direction:column;border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;background:#fff;">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--navy);">${escapeHtml(conv.customer_name||'Guest')}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${escapeHtml(conv.country_id)} · 客服来源：${escapeHtml(conv.agent_id||'未分配')} · ${escapeHtml(conv.id)}</div>
+
+    const isClosed = conv.status === 'closed';
+    thread.innerHTML = `
+      <div style="width:100%;height:100%;display:flex;flex-direction:column;background:#EFE9DD;">
+        <!-- 聊天顶部栏 -->
+        <div style="background:var(--navy);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;">${escapeHtml((conv.customer_name||'G').charAt(0).toUpperCase())}</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#fff;">${escapeHtml((()=>{const n=conv.customer_name||conv.customer_email||'Guest';return n.includes('@')?n.slice(0,6)+'...':n;})())}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:1px;">${escapeHtml(conv.country_id)} · ${escapeHtml(conv.agent_id||'未分配')}</div>
+            </div>
           </div>
-          <button onclick="closeSupportConversation('${escapeAttr(id)}')" style="background:none;border:none;font-size:20px;color:var(--gray-400);cursor:pointer;line-height:1;padding:4px 8px;" title="关闭会话">✕</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${!isClosed ? `<button onclick="closeSupportConversation('${escapeAttr(id)}')" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.8);font-size:12px;font-weight:600;padding:5px 12px;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;" title="关闭会话">✕ 关闭</button>` : '<span style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;">已关闭</span>'}
+          </div>
         </div>
-        <div id="support-thread-messages" data-session-id="${escapeAttr(id)}" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;">${msgHtml||'<div class="orders-empty">暂无消息</div>'}</div>
-        <div style="padding:12px;border-top:1px solid var(--gray-200);display:flex;flex-direction:column;gap:10px;position:relative;">
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button class="mini-btn" type="button" onclick="toggleAdminEmojiPicker()">😊</button>
-            <button class="mini-btn" type="button" onclick="document.getElementById('support-reply-image-file').click()">📷</button>
+        <!-- 消息区 -->
+        <div id="support-thread-messages" data-session-id="${escapeAttr(id)}" style="flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:4px;">
+          ${msgHtml || '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">暂无消息</div>'}
+        </div>
+        <!-- 输入区 WhatsApp风格 -->
+        <div style="background:#f0f2f5;padding:8px 12px;border-top:1px solid #ddd;flex-shrink:0;">
+          <!-- 表情面板：弹出在输入框上方 -->
+          <div id="admin-emoji-picker" style="display:none;gap:6px;flex-wrap:wrap;padding:10px;background:var(--white);border-radius:12px;border:1px solid var(--gray-200);margin-bottom:8px;box-shadow:0 4px 16px rgba(0,0,0,0.1);">
+            ${['😀','😂','😍','🥰','😎','👍','🙏','🎉','🔥','💎','❤️','✅','⚡','🌟','💰','🤝','👋','🙌','😊','🫡'].map(e=>`<button type="button" onclick="appendAdminEmoji('${e}')" style="background:none;border:none;font-size:22px;cursor:pointer;padding:3px 5px;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background='none'">${e}</button>`).join('')}
+          </div>
+          <!-- 单行输入栏：左侧图标 + 输入框 + 发送按钮 -->
+          <div style="display:flex;align-items:center;gap:6px;">
             <input type="file" id="support-reply-image-file" accept="image/*" style="display:none" onchange="supportReplyImageChosen(event)">
-          </div>
-          <div id="admin-emoji-picker" style="display:none;gap:6px;flex-wrap:wrap;padding:8px;background:var(--gray-100);border-radius:12px;">
-            ${['😀','😂','😍','🥰','😎','👍','🙏','🎉','🔥','💎'].map(e=>`<button type="button" class="mini-btn" onclick="appendAdminEmoji('${e}')" style="padding:6px 10px;">${e}</button>`).join('')}
-          </div>
-          <div style="display:flex;gap:8px;">
-            <input class="mini-input" id="support-reply-input" placeholder="输入客服回复..." style="flex:1;" onkeydown="if(event.key==='Enter')sendSupportReply('${escapeAttr(id)}')" ${conv.status==='closed'?'disabled':''}>
-            <button class="mini-btn" onclick="sendSupportReply('${escapeAttr(id)}')" ${conv.status==='closed'?'disabled style="opacity:0.45"':''}>发送</button>
+            <button type="button" onclick="toggleAdminEmojiPicker()" title="表情" style="background:none;border:none;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#54656f;transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.06)'" onmouseout="this.style.background='none'">😊</button>
+            <button type="button" onclick="document.getElementById('support-reply-image-file').click()" title="发送图片" style="background:none;border:none;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#54656f;transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.06)'" onmouseout="this.style.background='none'">📎</button>
+            <input id="support-reply-input" placeholder="${isClosed?'会话已关闭':'输入回复消息...'}" style="flex:1;border-radius:24px;background:#fff;border:none;padding:10px 18px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;box-shadow:0 1px 2px rgba(0,0,0,0.08);min-width:0;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSupportReply('${escapeAttr(id)}')}" ${isClosed?'disabled':''}>
+            <button onclick="sendSupportReply('${escapeAttr(id)}')" title="发送" style="background:${isClosed?'#aaa':'#00a884'};border:none;border-radius:50%;width:40px;height:40px;color:#fff;font-size:17px;cursor:${isClosed?'not-allowed':'pointer'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.15);" ${isClosed?'disabled':''} onmouseover="if(!this.disabled)this.style.background='#008f72'" onmouseout="if(!this.disabled)this.style.background='${isClosed?'#aaa':'#00a884'}'">➤</button>
           </div>
         </div>
       </div>`;
-    const box=document.getElementById('support-thread-messages');
-    if(box){
-      // Only scroll to bottom if user was already at bottom (don't interrupt reading)
-      const wasAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-      if(wasAtBottom) box.scrollTop=box.scrollHeight;
-    }
-  }catch(e){
-    // Don't overwrite thread on error during auto-refresh
-    if(!document.getElementById('support-thread-messages')){
-      thread.innerHTML=`<div class="orders-empty">消息加载失败：${escapeHtml(e.message)}</div>`;
+
+    const box = document.getElementById('support-thread-messages');
+    if (box) box.scrollTop = box.scrollHeight;
+
+  } catch(e) {
+    if (!document.getElementById('support-thread-messages')) {
+      thread.innerHTML = `<div style="padding:20px;color:var(--danger);font-size:13px;">消息加载失败：${escapeHtml(e.message)}</div>`;
     }
   }
 }
@@ -2199,14 +2374,15 @@ async function uploadSupportImage(file){
 }
 
 async function closeSupportConversation(id){
-  if(!confirm('确认关闭该客服会话？'))return;
-  try{
-    await sbFetchAdmin(`chat_sessions?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({status:'closed',updated_at:new Date().toISOString()})});
-    await loadSupportConversations();
-    showToast('✓ 会话已关闭');
-  }catch(e){
-    showToast('关闭失败：'+e.message,true);
-  }
+  showCustomConfirm('确认关闭该客服会话？', async () => {
+    try{
+      await sbFetchAdmin(`chat_sessions?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({status:'closed',updated_at:new Date().toISOString()})});
+      await loadSupportConversations();
+      showToast('✓ 会话已关闭');
+    }catch(e){
+      showToast('关闭失败：'+e.message,true);
+    }
+  });
 }
 
 function formatSupportTime(value){
@@ -2226,13 +2402,14 @@ function saveRefreshInterval() {
   }
 }
 function clearAllCache() {
-  if (!confirm('确认清除所有本地缓存？')) return;
-  priceCache = {};
-  localStorage.removeItem('xt_source_countries');
-  localStorage.removeItem(CARD_DENOMS_KEY);
-  localStorage.removeItem(CARD_CUSTOM_RATE_KEY);
-  localStorage.removeItem(CARD_COUNTRIES_KEY);
-  showToast('✓ 缓存已清除，重新加载页面生效');
+  showCustomConfirm('确认清除所有本地缓存？', () => {
+    priceCache = {};
+    localStorage.removeItem('xt_source_countries');
+    localStorage.removeItem(CARD_DENOMS_KEY);
+    localStorage.removeItem(CARD_CUSTOM_RATE_KEY);
+    localStorage.removeItem(CARD_COUNTRIES_KEY);
+    showToast('✓ 缓存已清除，重新加载页面生效');
+  }, '此操作将清除本地所有价格缓存和设置');
 }
 
 // ══════════════════════════════════════════════════
@@ -3458,7 +3635,144 @@ window.onload=()=>{
   else document.getElementById('login-pw').focus();
 };
 </script>
-<!-- NEW ORDER NOTIFICATION TOAST -->
+<!-- CUSTOM CONFIRM DIALOG -->
+<div class="custom-confirm-overlay" id="custom-confirm-overlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon">⚠️</div>
+    <div class="custom-confirm-msg" id="custom-confirm-msg">确认操作？</div>
+    <div class="custom-confirm-sub" id="custom-confirm-sub"></div>
+    <div class="custom-confirm-btns">
+      <button class="custom-confirm-btn-cancel" onclick="customConfirmCancel()">取消</button>
+      <button class="custom-confirm-btn-ok" onclick="customConfirmOk()">确认</button>
+    </div>
+  </div>
+</div>
+<script>
+let _customConfirmCallback = null;
+function showCustomConfirm(msg, onOk, sub) {
+  document.getElementById('custom-confirm-msg').textContent = msg || '确认操作？';
+  document.getElementById('custom-confirm-sub').textContent = sub || '';
+  _customConfirmCallback = onOk;
+  document.getElementById('custom-confirm-overlay').classList.add('open');
+}
+function customConfirmOk() {
+  document.getElementById('custom-confirm-overlay').classList.remove('open');
+  if (typeof _customConfirmCallback === 'function') _customConfirmCallback();
+  _customConfirmCallback = null;
+}
+function customConfirmCancel() {
+  document.getElementById('custom-confirm-overlay').classList.remove('open');
+  _customConfirmCallback = null;
+}
+document.getElementById('custom-confirm-overlay').addEventListener('click', function(e) {
+  if (e.target === this) customConfirmCancel();
+});
+
+// ============================================================
+// 图3：历史记录归档折叠
+// ============================================================
+function toggleHistoryArchive() {
+  const list = document.getElementById('history-archive-list');
+  const chevron = document.getElementById('history-archive-chevron');
+  if (!list) return;
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.textContent = isOpen ? '▶' : '▼';
+}
+
+// ============================================================
+// 图1 + 附加：IP → 国家名称查询 & 自动匹配
+// ============================================================
+const _ipCountryCache = {};
+
+// 支持的客服国家对应的国家代码映射
+const SUPPORT_COUNTRY_CODE_MAP = {
+  'NG': 'nigeria',   // 尼日利亚
+  'GH': 'ghana',     // 加纳
+  'BJ': 'benin',     // 贝宁
+  'CM': 'cameroon',  // 喀麦隆
+  'CI': 'ivory',     // 科特迪瓦
+  'KE': 'kenya',     // 肯尼亚
+  'IN': 'india',     // 印度
+};
+
+async function lookupIpCountry(ip) {
+  if (!ip || ip === 'unknown') return null;
+  if (_ipCountryCache[ip]) return _ipCountryCache[ip];
+  try {
+    const res = await fetch(`https://ip-api.com/json/${ip}?fields=status,country,countryCode,flag`, { signal: AbortSignal.timeout(4000) });
+    const data = await res.json();
+    if (data.status === 'success') {
+      const result = { country: data.country, countryCode: data.countryCode };
+      _ipCountryCache[ip] = result;
+      return result;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function getCountryFlagEmoji(countryCode) {
+  if (!countryCode || countryCode.length !== 2) return '';
+  const codePoints = [...countryCode.toUpperCase()].map(c => 127397 + c.charCodeAt(0));
+  return String.fromCodePoint(...codePoints);
+}
+
+function getSupportCountryIdFromCode(countryCode) {
+  return SUPPORT_COUNTRY_CODE_MAP[countryCode] || 'usdt';
+}
+
+// 批量查询会话列表中所有IP，渲染完成后更新显示
+async function enrichSessionsWithIpCountry(sessions) {
+  const promises = sessions.map(async s => {
+    const ip = s.customer_ip || s.ip_address || s.ip || '';
+    if (!ip) return;
+    const geo = await lookupIpCountry(ip);
+    if (geo) {
+      s._geoCountry = geo.country;
+      s._geoCountryCode = geo.countryCode;
+      s._geoFlag = getCountryFlagEmoji(geo.countryCode);
+      s._geoSupportId = getSupportCountryIdFromCode(geo.countryCode);
+    }
+  });
+  await Promise.allSettled(promises);
+}
+
+// ============================================================
+// 图2：同步客服列表实时状态指示器
+// ============================================================
+function _rtSyncSupportStatus(state) {
+  const dot = document.getElementById('rt-support-dot');
+  const label = document.getElementById('rt-support-label');
+  const pill = document.getElementById('rt-support-pill');
+  if (!dot || !label) return;
+  if (state === 'connected') {
+    dot.style.background = '#22c55e';
+    dot.style.animation = 'pulse-dot 2s infinite';
+    label.textContent = '实时连接';
+    if (pill) { pill.style.borderColor = 'rgba(34,197,94,0.4)'; pill.style.background = 'rgba(34,197,94,0.06)'; }
+  } else if (state === 'connecting') {
+    dot.style.background = '#f59e0b';
+    dot.style.animation = 'pulse-dot 1s infinite';
+    label.textContent = '连接中...';
+    if (pill) { pill.style.borderColor = 'var(--gray-200)'; pill.style.background = 'var(--gray-100)'; }
+  } else {
+    dot.style.background = '#ef4444';
+    dot.style.animation = 'none';
+    label.textContent = '已断开';
+    if (pill) { pill.style.borderColor = 'rgba(239,68,68,0.4)'; pill.style.background = 'rgba(239,68,68,0.06)'; }
+  }
+}
+
+// 客服账号管理折叠
+function toggleAgentMgr() {
+  const panel = document.getElementById('agent-mgr-panel');
+  const chevron = document.getElementById('agent-mgr-chevron');
+  if (!panel) return;
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  if (chevron) chevron.textContent = open ? '▾' : '▸';
+}
+</script>
 <div class="new-order-toast" id="new-order-toast">
   <div class="not-header">
     <span class="not-icon">🛎️</span>
@@ -3956,27 +4270,30 @@ function filterUsersTable() {
 }
 
 async function toggleBanUser(key, ban, btn) {
-  if (ban && !confirm(`确认封禁该用户？封禁后其订单将被标记。`)) return;
-  if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
-
-  if (ban) _bannedUserIds.add(key);
-  else _bannedUserIds.delete(key);
-
-  const bannedArr = Array.from(_bannedUserIds);
-  try {
-    await sbFetchAdmin('app_settings?key=eq.banned_users', {
-      method: 'POST',
-      headers: { 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify([{ key: 'banned_users', value: bannedArr }])
-    });
-    // Update local data
-    const u = _allUsers.find(x => x.key === key);
-    if (u) u.banned = ban;
-    filterUsersTable();
-    showToast(ban ? '🚫 用户已封禁' : '✅ 用户已解封');
-  } catch(e) {
-    showToast('操作失败: ' + e.message, true);
-    if (btn) { btn.disabled = false; btn.textContent = ban ? '封禁' : '解封'; }
+  const doToggle = async () => {
+    if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
+    if (ban) _bannedUserIds.add(key);
+    else _bannedUserIds.delete(key);
+    const bannedArr = Array.from(_bannedUserIds);
+    try {
+      await sbFetchAdmin('app_settings?key=eq.banned_users', {
+        method: 'POST',
+        headers: { 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify([{ key: 'banned_users', value: bannedArr }])
+      });
+      const u = _allUsers.find(x => x.key === key);
+      if (u) u.banned = ban;
+      filterUsersTable();
+      showToast(ban ? '🚫 用户已封禁' : '✅ 用户已解封');
+    } catch(e) {
+      showToast('操作失败: ' + e.message, true);
+      if (btn) { btn.disabled = false; btn.textContent = ban ? '封禁' : '解封'; }
+    }
+  };
+  if (ban) {
+    showCustomConfirm('确认封禁该用户？', doToggle, '封禁后其订单将被标记，且无法下单。');
+  } else {
+    doToggle();
   }
 }
 
