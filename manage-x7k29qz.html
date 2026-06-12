@@ -2754,13 +2754,6 @@ function renderDefaultDenomsSettings(){
   const denoms = _lsGet(KEY_DEFAULT_DENOMS, [10,25,50,100,150,200,250,300,350,400,500]);
   input.value = denoms.join(',');
 }
-function saveDefaultDenoms(){
-  const raw = document.getElementById('set-default-denoms')?.value||'';
-  const denoms = raw.split(',').map(s=>Number(s.trim())).filter(n=>n>0&&Number.isFinite(n));
-  if(!denoms.length){ showToast('请输入至少一个有效面值', true); return; }
-  _lsSave(KEY_DEFAULT_DENOMS, denoms);
-  showToast('✓ 默认面值已保存，刷新前台生效');
-}
 // ══════════════════════════════════════════════════
 // ==================== 结束客服管理系统 ====================
 
@@ -2881,9 +2874,16 @@ async function loadPrices(countryId){
   return Object.keys(priceCache[countryId]).length;
 }
 async function saveCardToSupabase(countryId,cardId,prices,link){
-  const denoms = getCardDenoms(cardId);
-  const rows=denoms.map(d=>({country_id:countryId,card_id:cardId,denom:d,price:prices[String(d)]||prices[d]||'',link:link||''}));
-  await sbFetch('card_prices?on_conflict=country_id,card_id,denom',{method:'POST',auth:true,headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(rows)});
+  const rows = Object.entries(prices).map(([denom,price])=>({
+    country_id: countryId,
+    card_id: cardId,
+    denom: Number(denom),
+    price,
+    link: link||''
+  }));
+  if(rows.length){
+    await sbFetch('card_prices?on_conflict=country_id,card_id,denom',{method:'POST',auth:true,headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(rows)});
+  }
   if(!priceCache[countryId])priceCache[countryId]={};
   // 统一用字符串 key 存入缓存
   const normalizedPrices={};
@@ -3336,22 +3336,6 @@ function renderAdminList(){
           <button class="mini-btn" onclick="addCardDenom(${c.id})" style="font-size:12px">+ 添加</button>
         </div>
       </div>`;
-    const customRateHtml = `
-      <div style="margin-bottom:14px;padding:12px;background:var(--off-white);border-radius:10px;border:1px solid var(--gray-200)">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <input type="checkbox" id="custom-rate-toggle-${c.id}" ${customRateCfg.enabled?'checked':''} onchange="toggleCustomRate(${c.id})" style="width:16px;height:16px;cursor:pointer">
-          <label for="custom-rate-toggle-${c.id}" style="font-size:12px;font-weight:700;color:var(--navy);cursor:pointer">🔒 启用「其他金额」隐藏汇率</label>
-        </div>
-        <div id="custom-rate-wrap-${c.id}" style="display:${customRateCfg.enabled?'block':'none'}">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">客户填入金额 × 汇率 = 本地货币（汇率对客户隐藏）</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:600">1 ${escapeHtml(source?.currency||'USD')} × </span>
-            <input class="mini-input" id="custom-rate-input-${c.id}" type="number" min="0" step="any" value="${escapeAttr(String(customRateCfg.rate||''))}" placeholder="输入汇率，如：1580" style="width:140px">
-            <span style="font-size:13px;font-weight:600">= ${escapeHtml(country?.symbol||'')} 本地货币</span>
-            <button class="mini-btn" onclick="saveCustomRate(${c.id})" style="font-size:12px">保存汇率</button>
-          </div>
-        </div>
-      </div>`;
     const cardTypeHtml = isCardNumberTypeCard(c) ? `
       <div style="margin-bottom:14px;padding:12px;background:var(--off-white);border-radius:10px;border:1px solid var(--gray-200)">
         <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px">🔢 礼品卡卡头数字设置</div>
@@ -3391,6 +3375,14 @@ function renderAdminList(){
     // ── 区域②：面值管理 + 来源国家选择 → 下拉框 ──
     const srcOptions = cardSrcList.map(sc=>`<option value="${escapeAttr(sc.id)}" ${sc.id===curSrc?'selected':''}>${escapeHtml(sc.flag+' '+sc.name+' · '+sc.currency)}</option>`).join('');
     const denomsOptions = getCardDenoms(c.id).map(d=>`<option value="${d}">$${d}</option>`).join('');
+    
+    // 提前定义 priceRowsHtml 以供下面使用
+    const priceRowsHtml = getCardDenoms(c.id).map(d=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100);">
+        <div style="min-width:110px;font-size:13px;font-weight:600;color:var(--navy)">${source?escapeHtml(source.symbol):''}${d} → ${escapeHtml(country.symbol)}</div>
+        <input class="price-input" type="text" id="price-${c.id}-${d}" value="${escapeAttr(getPrice(key,c.id,d))}" placeholder="输入价格..." style="flex:1;max-width:200px">
+      </div>`).join('');
+    
     const denomsHtml2 = `
       <div style="margin-bottom:14px;padding:12px;background:var(--gray-100);border-radius:10px;border:1px solid var(--gray-200)">
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
@@ -3422,14 +3414,33 @@ function renderAdminList(){
         </div>
         <!-- 面值标签预览 -->
         <div id="denom-mgr-${c.id}" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+        <div style="margin-top:12px;padding:12px;background:var(--white);border-radius:10px;border:1px solid var(--gray-200)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <input type="checkbox" id="custom-rate-toggle-${c.id}" ${customRateCfg.enabled?'checked':''} onchange="toggleCustomRate(${c.id})" style="width:16px;height:16px;cursor:pointer">
+            <label for="custom-rate-toggle-${c.id}" style="font-size:12px;font-weight:700;color:var(--navy);cursor:pointer">🔒 启用「其他金额」隐藏汇率</label>
+          </div>
+          <div id="custom-rate-wrap-${c.id}" style="display:${customRateCfg.enabled?'block':'none'};padding:8px 0;border-top:1px solid var(--gray-100);">
+            <div style="font-size:11px;color:var(--text-muted);margin:8px 0">客户填入金额 × 汇率 = 本地货币（汇率对客户隐藏）</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:600">1 ${escapeHtml(source?.currency||'USD')} × </span>
+              <input class="mini-input" id="custom-rate-input-${c.id}" type="number" min="0" step="any" value="${escapeAttr(String(customRateCfg.rate||''))}" placeholder="输入汇率，如：1580" style="width:140px">
+              <span style="font-size:13px;font-weight:600">= ${escapeHtml(country?.symbol||'')} 本地货币</span>
+              <button class="mini-btn" onclick="saveCustomRate(${c.id})" style="font-size:12px">保存汇率</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:var(--white);border-radius:10px;border:1px solid var(--gray-200)">
+          <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px" onclick="(function(){const b=document.getElementById('price-list-${c.id}');const a=document.getElementById('price-toggle-${c.id}');if(b.style.display==='none'){b.style.display='block';a.textContent='收起 ▲';}else{b.style.display='none';a.textContent='展开 ▼';}})()">
+            <div style="font-size:12px;font-weight:700;color:var(--navy)">💰 汇率修改设置</div>
+            <span id="price-toggle-${c.id}" style="font-size:12px;color:var(--text-muted);user-select:none">展开 ▼</span>
+          </div>
+          <div id="price-list-${c.id}" style="display:none;margin-top:10px">
+            <div id="price-grid-${c.id}" style="margin-top:6px">
+              ${priceRowsHtml}
+            </div>
+          </div>
+        </div>
       </div>`;
-
-    // ── 区域③：价格输入网格 → 可折叠下拉 + 精简显示 ──
-    const priceRowsHtml = getCardDenoms(c.id).map(d=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100);">
-        <div style="min-width:110px;font-size:13px;font-weight:600;color:var(--navy)">${source?escapeHtml(source.symbol):''}${d} → ${escapeHtml(country.symbol)}</div>
-        <input class="price-input" type="text" id="price-${c.id}-${d}" value="${escapeAttr(getPrice(key,c.id,d))}" placeholder="输入价格..." style="flex:1;max-width:200px">
-      </div>`).join('');
 
     return `
     <div class="admin-card">
@@ -3445,19 +3456,6 @@ function renderAdminList(){
         ${countryMgrHtml}
         ${cardTypeHtml}
         ${denomsHtml2}
-        ${customRateHtml}
-        <!-- 区域③ 价格列表 -->
-        <div style="margin-bottom:14px;padding:12px;background:var(--gray-100);border-radius:10px;border:1px solid var(--gray-200)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">💰 汇率修改设置</div>
-            <button onclick="(function(){const b=document.getElementById('price-list-${c.id}');const a=document.getElementById('price-toggle-${c.id}');if(b.style.display==='none'){b.style.display='block';a.textContent='收起 ▲';}else{b.style.display='none';a.textContent='展开 ▼';};})()" id="price-toggle-${c.id}" style="font-size:11px;background:none;border:1px solid var(--gray-200);border-radius:6px;padding:3px 10px;cursor:pointer;color:var(--text-muted)">展开 ▼</button>
-          </div>
-          <div id="price-list-${c.id}" style="display:none">
-            <div id="price-grid-${c.id}" style="margin-top:6px">
-              ${priceRowsHtml}
-            </div>
-          </div>
-        </div>
         <div class="redeem-field" style="display:none">
           <label class="redeem-label">兑换链接 Redeem Link</label>
           <input class="redeem-input" type="text" id="link-${c.id}" value="${escapeAttr(getLink(key,c.id))}" placeholder="https://...">
@@ -3541,11 +3539,25 @@ async function saveCard(cid){
   const denoms = getCardDenoms(cid);
   denoms.forEach(d=>{
     const inp = document.getElementById(`price-${cid}-${d}`);
-    if(inp) prices[d]=inp.value.trim();
+    if(!inp) return;
+    const raw = inp.value.trim();
+    if(raw === '') return;
+    const parsed = Number(raw);
+    if(!Number.isFinite(parsed)){
+      showToast('请输入有效数字价格', true);
+      btn.disabled=false;btn.textContent='💾 保存到云端';
+      throw new Error('价格格式错误');
+    }
+    prices[d] = parsed;
   });
   const link=document.getElementById(`link-${cid}`)?.value?.trim()||'';
   if(link&&!isSafeHttpUrl(link)){
     showToast('兑换链接必须以 http:// 或 https:// 开头',true);
+    btn.disabled=false;btn.textContent='💾 保存到云端';
+    return;
+  }
+  if(Object.keys(prices).length === 0){
+    showToast('请先输入至少一个价格', true);
     btn.disabled=false;btn.textContent='💾 保存到云端';
     return;
   }
@@ -3554,7 +3566,9 @@ async function saveCard(cid){
     const saveKey=makePriceKey(adminClientCountry,cardSrcId);
     await saveCardToSupabase(saveKey,cid,prices,link);
     showToast('✓ 保存成功！已同步云端');
-  }catch(e){showToast('保存失败：'+e.message,true);}
+  }catch(e){
+    if (e.message !== '价格格式错误') showToast('保存失败：'+e.message,true);
+  }
   btn.disabled=false;btn.textContent='💾 保存到云端';
 }
 
