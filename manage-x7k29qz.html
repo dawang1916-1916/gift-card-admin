@@ -376,7 +376,6 @@ footer span{color:var(--gold-light);}
           <span class="sidebar-badge" id="orders-badge" style="display:none">0</span>
         </button>
         <button class="sidebar-nav-tab" id="nav-prices" onclick="switchAdminTab('prices')">💰 价格管理</button>
-        <button class="sidebar-nav-tab" id="nav-csv" onclick="switchAdminTab('csv')">📊 批量修改价格</button>
         <button class="sidebar-nav-tab" id="nav-support" onclick="switchAdminTab('support')">💬 客服管理</button>
         <button class="sidebar-nav-tab" id="nav-bankinfo" onclick="switchAdminTab('bankinfo')">🏦 银行信息</button>
         <button class="sidebar-nav-tab" id="nav-users" onclick="switchAdminTab('users')">👥 用户管理</button>
@@ -436,13 +435,7 @@ footer span{color:var(--gold-light);}
 
     <!-- TAB 2: PRICES -->
     <div class="admin-tab-panel" id="panel-prices">
-      <!-- 全局默认面值（快捷设置） -->
-      <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <span style="font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;">💵 全局默认面值</span>
-        <input class="mini-input" id="set-default-denoms" style="flex:1;min-width:220px;" placeholder="10,25,50,100,200,500">
-        <button class="mini-btn" onclick="saveDefaultDenoms()" style="background:var(--navy);color:#fff;">💾 保存</button>
-        <span style="font-size:11px;color:var(--text-muted);">逗号分隔，未单独配置面值的卡片使用此列表</span>
-      </div>
+
       <!-- 分类筛选 -->
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
         <span style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;">分类：</span>
@@ -470,27 +463,7 @@ footer span{color:var(--gold-light);}
       <div class="admin-card-list" id="admin-list"></div>
     </div>
 
-    <!-- TAB 3: CSV IMPORT -->
-    <div class="admin-tab-panel" id="panel-csv">
-      <div class="admin-section">
-        <div class="admin-section-title">📊 批量导入价格 (CSV)</div>
-        <div class="csv-actions" style="margin-bottom:14px">
-          <button class="csv-btn" onclick="downloadTemplate()">⬇ 下载模板 CSV</button>
-        </div>
-        <div class="csv-drop-zone" id="csv-drop-zone" onclick="document.getElementById('csv-file-input').click()">
-          <div class="csv-drop-icon">📂</div>
-          <div class="csv-drop-text">点击选择 CSV 文件，或拖拽到此处</div>
-          <div class="csv-drop-sub">支持 .csv 格式 · 按模板填写后上传</div>
-          <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCsvFile(this.files[0])">
-        </div>
-        <div class="csv-preview" id="csv-preview"></div>
-        <div class="csv-status" id="csv-status"></div>
-        <div class="csv-actions" id="csv-import-actions" style="display:none">
-          <button class="csv-btn csv-btn-gold" onclick="importCsvToSupabase()">☁ 上传到云端</button>
-          <button class="csv-btn" onclick="resetCsv()">✕ 取消</button>
-        </div>
-      </div>
-    </div>
+
 
     <!-- TAB 4: CUSTOMER SUPPORT MANAGEMENT -->
     <div class="admin-tab-panel" id="panel-support">
@@ -894,6 +867,58 @@ function renderDenomManager(cardId) {
 // ===== 隐藏汇率管理 =====
 function getCardCustomRate(cardId) { return cardCustomRateMap[cardId] || { rate: '', enabled: false }; }
 function saveCardCustomRate() { localStorage.setItem(CARD_CUSTOM_RATE_KEY, JSON.stringify(cardCustomRateMap)); }
+function calcRow(cardId, denom) {
+  const cr = parseFloat(document.getElementById('ccr-' + cardId + '-' + denom)?.value) || 0;
+  const fx = parseFloat(document.getElementById('cfx-' + cardId + '-' + denom)?.value) || 0;
+  const pr = parseFloat(document.getElementById('cpr-' + cardId + '-' + denom)?.value) || 0;
+  if (!cr || !fx) {
+    ['cprinc','csell','cprofit','ccny'].forEach(function(id){ const el=document.getElementById(id+'-'+cardId+'-'+denom); if(el) el.textContent='—'; });
+    return;
+  }
+  const divMode = (adminClientCountry === 'ghana' || adminClientCountry === 'usdt');
+  let principal, sellPrice, profitLocal, profitCNY;
+  if (divMode) {
+    principal = denom * cr / fx;
+    profitLocal = principal * pr / 100;
+    sellPrice = principal - profitLocal;
+    profitCNY = profitLocal * fx;
+  } else {
+    principal = denom * cr * fx;
+    profitLocal = principal * pr / 100;
+    sellPrice = principal - profitLocal;
+    profitCNY = fx ? profitLocal / fx : 0;
+  }
+  const set = function(id, val){ const el=document.getElementById(id+'-'+cardId+'-'+denom); if(el) el.textContent=val.toFixed(2); };
+  set('cprinc', principal);
+  set('csell', sellPrice);
+  set('cprofit', profitLocal);
+  set('ccny', profitCNY);
+}
+
+function applyPrice(cardId, denom) {
+  const sellEl = document.getElementById('csell-' + cardId + '-' + denom);
+  const priceEl = document.getElementById('price-' + cardId + '-' + denom);
+  if (sellEl && priceEl && sellEl.textContent !== '—') {
+    priceEl.value = sellEl.textContent;
+    showToast('✓ $' + denom + ' 报价已填入');
+  }
+}
+
+function applyAllPrices(cardId) {
+  const denoms = getCardDenoms(cardId);
+  let filled = 0;
+  denoms.forEach(function(d) {
+    const sellEl = document.getElementById('csell-' + cardId + '-' + d);
+    const priceEl = document.getElementById('price-' + cardId + '-' + d);
+    if (sellEl && priceEl && sellEl.textContent !== '—') {
+      priceEl.value = sellEl.textContent;
+      filled++;
+    }
+  });
+  if (filled > 0) showToast('✓ 已填入 ' + filled + ' 个报价，记得点「保存到云端」');
+  else showToast('请先在计算器输入汇率和利润率', true);
+}
+
 function toggleCustomRate(cardId) {
   const cfg = getCardCustomRate(cardId);
   cfg.enabled = !cfg.enabled;
@@ -2038,7 +2063,6 @@ function toggleAutoRefresh() {
 const TAB_META = {
   orders:   { title: '📋 订单管理', sub: '管理所有交易订单，实时同步云端' },
   prices:   { title: '💰 价格管理', sub: '设置各礼品卡兑换汇率' },
-  csv:      { title: '📊 批量修改价格', sub: '通过 CSV 批量上传或修改价格数据' },
   support:  { title: '💬 客服管理', sub: '管理各国家客服团队（主客服 + 子客服）' },
   settings: { title: '⚙️ 系统设置', sub: '配置系统参数和缓存管理' },
   bankinfo: { title: '🏦 银行信息', sub: '查看每位客户按国家保存的银行账户信息' },
@@ -2867,7 +2891,7 @@ async function loadPrices(countryId){
     });
   }catch(e){
     priceCache[countryId]={};
-    showToast('加载失败 '+e.message,true);
+    // 静默处理登录前的加载失败
   }finally{
     showLoading(false);
   }
@@ -3333,7 +3357,7 @@ function renderAdminList(){
         <div id="denom-mgr-${c.id}" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="mini-input" id="denom-input-${c.id}" type="number" min="1" placeholder="添加金额，如：75" style="width:140px">
-          <button class="mini-btn" onclick="addCardDenom(${c.id})" style="font-size:12px">+ 添加</button>
+          <button class="mini-btn" onclick="addCardDenom(${c.id})" style="font-size:12px;background:#C9A84C;color:#1a1a1a;border:none">+ 添加</button>
         </div>
       </div>`;
     const cardTypeHtml = isCardNumberTypeCard(c) ? `
@@ -3349,8 +3373,8 @@ function renderAdminList(){
       </div>` : '';
     // ── 区域①：来源国家管理 → 已选国家用下拉展示，添加用搜索自动识别 ──
     const countryMgrHtml=`
-      <div style="margin-bottom:14px;padding:12px;background:var(--gray-100);border-radius:10px;border:1px solid var(--gray-200)">
-        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">🌍 添加国家设置</div>
+      <div style="margin-bottom:14px;padding:12px;background:#e8e4de;border-radius:10px;border:2px solid #C9A84C">
+        <div style="font-size:11px;font-weight:700;color:#1a2a4a;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">🌍 添加国家设置</div>
         <!-- 已添加国家：用 select 下拉展示 + 删除 -->
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
           <select class="mini-input" id="cc-added-select-${c.id}" style="flex:1;cursor:pointer">
@@ -3376,6 +3400,9 @@ function renderAdminList(){
     const srcOptions = cardSrcList.map(sc=>`<option value="${escapeAttr(sc.id)}" ${sc.id===curSrc?'selected':''}>${escapeHtml(sc.flag+' '+sc.name+' · '+sc.currency)}</option>`).join('');
     const denomsOptions = getCardDenoms(c.id).map(d=>`<option value="${d}">$${d}</option>`).join('');
     
+    // 判断是否用除法公式（加纳 & USDT）
+    const useDivFormula = (adminClientCountry === 'ghana' || adminClientCountry === 'usdt');
+
     // 提前定义 priceRowsHtml 以供下面使用
     const priceRowsHtml = getCardDenoms(c.id).map(d=>`
       <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100);">
@@ -3384,18 +3411,18 @@ function renderAdminList(){
       </div>`).join('');
     
     const denomsHtml2 = `
-      <div style="margin-bottom:14px;padding:12px;background:var(--gray-100);border-radius:10px;border:1px solid var(--gray-200)">
+      <div style="margin-bottom:14px;padding:12px;background:#e8e4de;border-radius:10px;border:2px solid #C9A84C">
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
           <!-- 来源国家下拉 -->
           <div style="flex:1;min-width:200px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">💱 来源国家</div>
+            <div style="font-size:11px;font-weight:700;color:#1a2a4a;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">💱 来源国家</div>
             <select class="mini-input" style="width:100%;cursor:pointer" onchange="switchCardSource(${c.id},this.value)">
               ${srcOptions}
             </select>
           </div>
           <!-- 面值下拉 -->
           <div style="flex:1;min-width:200px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">💲 当前面值列表</div>
+            <div style="font-size:11px;font-weight:700;color:#1a2a4a;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">💲 当前面值列表</div>
             <div style="display:flex;gap:6px;align-items:center">
               <select class="mini-input" id="denom-view-${c.id}" style="flex:1;cursor:pointer">
                 ${denomsOptions}
@@ -3405,19 +3432,18 @@ function renderAdminList(){
           </div>
           <!-- 添加面值 -->
           <div style="flex:1;min-width:180px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">➕ 添加面值</div>
+            <div style="font-size:11px;font-weight:700;color:#1a2a4a;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">➕ 添加面值</div>
             <div style="display:flex;gap:6px;align-items:center">
               <input class="mini-input" id="denom-input-${c.id}" type="number" min="1" placeholder="如：75" style="flex:1">
-              <button class="mini-btn" onclick="addCardDenom(${c.id})" style="font-size:12px">+ 添加</button>
+              <button class="mini-btn" onclick="addCardDenom(${c.id})" style="font-size:12px;background:#C9A84C;color:#1a1a1a;border:none">+ 添加</button>
             </div>
           </div>
         </div>
-        <!-- 面值标签预览 -->
-        <div id="denom-mgr-${c.id}" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+
         <div style="margin-top:12px;padding:12px;background:var(--white);border-radius:10px;border:1px solid var(--gray-200)">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
             <input type="checkbox" id="custom-rate-toggle-${c.id}" ${customRateCfg.enabled?'checked':''} onchange="toggleCustomRate(${c.id})" style="width:16px;height:16px;cursor:pointer">
-            <label for="custom-rate-toggle-${c.id}" style="font-size:12px;font-weight:700;color:var(--navy);cursor:pointer">🔒 启用「其他金额」隐藏汇率</label>
+            <label for="custom-rate-toggle-${c.id}" style="font-size:12px;font-weight:700;color:#1a2a4a;cursor:pointer">🔒 启用「其他金额」隐藏汇率</label>
           </div>
           <div id="custom-rate-wrap-${c.id}" style="display:${customRateCfg.enabled?'block':'none'};padding:8px 0;border-top:1px solid var(--gray-100);">
             <div style="font-size:11px;color:var(--text-muted);margin:8px 0">客户填入金额 × 汇率 = 本地货币（汇率对客户隐藏）</div>
@@ -3431,12 +3457,88 @@ function renderAdminList(){
         </div>
         <div style="margin-top:12px;padding:12px;background:var(--white);border-radius:10px;border:1px solid var(--gray-200)">
           <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px" onclick="(function(){const b=document.getElementById('price-list-${c.id}');const a=document.getElementById('price-toggle-${c.id}');if(b.style.display==='none'){b.style.display='block';a.textContent='收起 ▲';}else{b.style.display='none';a.textContent='展开 ▼';}})()">
-            <div style="font-size:12px;font-weight:700;color:var(--navy)">💰 汇率修改设置</div>
+            <div style="font-size:12px;font-weight:700;color:#1a2a4a">💰 汇率修改设置</div>
             <span id="price-toggle-${c.id}" style="font-size:12px;color:var(--text-muted);user-select:none">展开 ▼</span>
           </div>
           <div id="price-list-${c.id}" style="display:none;margin-top:10px">
-            <div id="price-grid-${c.id}" style="margin-top:6px">
-              ${priceRowsHtml}
+            <!-- 左右布局：左边价格框，右边计算器 -->
+            <div style="display:flex;gap:16px;align-items:flex-start">
+              <!-- 左边：价格输入框 -->
+              <div style="flex:0 0 auto;min-width:260px">
+                <div id="price-grid-${c.id}" style="margin-top:0">
+                  ${priceRowsHtml}
+                </div>
+              </div>
+              <!-- 右边：计算器 -->
+              <div style="flex:1;background:var(--off-white);border:1px solid var(--gray-200);border-radius:10px;padding:14px;min-width:320px">
+                <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">🧮 礼品卡报价计算器</div>
+                <!-- 一键填入栏 -->
+                <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+                  <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px">⚡ 一键填入所有行</div>
+                  <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+                    <div>
+                      <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">礼品卡汇率</div>
+                      <input class="mini-input" id="bulk-cr-${c.id}" type="number" step="any" min="0" placeholder="如：5.65" style="width:90px;height:32px;font-size:12px;text-align:center">
+                    </div>
+                    <div>
+                      <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">货币汇率</div>
+                      <input class="mini-input" id="bulk-fx-${c.id}" type="number" step="any" min="0" placeholder="如：203.2" style="width:100px;height:32px;font-size:12px;text-align:center">
+                    </div>
+                    <div>
+                      <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">利润率%</div>
+                      <input class="mini-input" id="bulk-pr-${c.id}" type="number" step="any" min="0" max="100" placeholder="如：5" style="width:75px;height:32px;font-size:12px;text-align:center">
+                    </div>
+                    <button class="mini-btn" style="background:linear-gradient(135deg,#e05030,#c0392b);color:#fff;font-size:12px;height:32px;white-space:nowrap"
+                      onclick="(function(){
+                        const cr = parseFloat(document.getElementById('bulk-cr-${c.id}').value);
+                        const fx = parseFloat(document.getElementById('bulk-fx-${c.id}').value);
+                        const pr = parseFloat(document.getElementById('bulk-pr-${c.id}').value) || 0;
+                        if (!cr||cr<=0) { showToast('请输入礼品卡汇率',true); return; }
+                        if (!fx||fx<=0) { showToast('请输入货币汇率',true); return; }
+                        getCardDenoms(${c.id}).forEach(function(d){
+                          const ci = document.getElementById('ccr-${c.id}-'+d);
+                          const fi = document.getElementById('cfx-${c.id}-'+d);
+                          const pi = document.getElementById('cpr-${c.id}-'+d);
+                          if(ci) ci.value = cr;
+                          if(fi) fi.value = fx;
+                          if(pi) pi.value = pr;
+                          calcRow(${c.id}, d);
+                        });
+                        showToast('✓ 已填入所有行并计算完成');
+                      })()">⚡ 一键填入</button>
+                  </div>
+                </div>
+                <!-- 表头 -->
+                <div style="display:grid;grid-template-columns:60px 80px 80px 70px 80px 80px 80px 70px;gap:4px;margin-bottom:6px">
+                  <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-align:center">面值</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-align:center">礼品卡汇率</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-align:center">货币汇率</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-align:center">利润率%</div>
+                  <div style="font-size:10px;font-weight:700;color:#e07050;text-align:center">本金</div>
+                  <div style="font-size:10px;font-weight:700;color:#c0392b;text-align:center">报价</div>
+                  <div style="font-size:10px;font-weight:700;color:#e07050;text-align:center">本币利润</div>
+                  <div style="font-size:10px;font-weight:700;color:#27ae60;text-align:center">¥利润</div>
+                </div>
+                <!-- 每个面值一行 -->
+                <div id="calc-rows-${c.id}">
+                  ${getCardDenoms(c.id).map(d => `
+                  <div style="display:grid;grid-template-columns:60px 80px 80px 70px 80px 80px 80px 70px;gap:4px;margin-bottom:6px;align-items:center">
+                    <div style="font-size:12px;font-weight:700;color:var(--navy);text-align:center">$${d}</div>
+                    <input class="mini-input" id="ccr-${c.id}-${d}" type="number" step="any" min="0" placeholder="5.65" style="font-size:11px;padding:5px 4px;text-align:center;height:30px" oninput="calcRow(${c.id},${d})">
+                    <input class="mini-input" id="cfx-${c.id}-${d}" type="number" step="any" min="0" placeholder="203.2" style="font-size:11px;padding:5px 4px;text-align:center;height:30px" oninput="calcRow(${c.id},${d})">
+                    <input class="mini-input" id="cpr-${c.id}-${d}" type="number" step="any" min="0" max="100" placeholder="5" style="font-size:11px;padding:5px 4px;text-align:center;height:30px" oninput="calcRow(${c.id},${d})">
+                    <div id="cprinc-${c.id}-${d}" style="font-size:11px;color:#e07050;font-weight:700;text-align:center">—</div>
+                    <div id="csell-${c.id}-${d}" style="font-size:11px;color:#c0392b;font-weight:700;text-align:center;cursor:pointer" onclick="applyPrice(${c.id},${d})" title="点击填入价格框">—</div>
+                    <div id="cprofit-${c.id}-${d}" style="font-size:11px;color:#e07050;font-weight:700;text-align:center">—</div>
+                    <div id="ccny-${c.id}-${d}" style="font-size:11px;color:#27ae60;font-weight:700;text-align:center">—</div>
+                  </div>`).join('')}
+                </div>
+                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="mini-btn" style="background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:var(--navy);font-size:12px"
+                    onclick="applyAllPrices(${c.id})">✅ 全部填入价格框</button>
+                  <div style="font-size:10px;color:var(--text-muted);line-height:1.4;padding-top:4px">点「报价」数字可单独填入 · 或点按钮全部填入</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
