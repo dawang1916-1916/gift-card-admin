@@ -617,7 +617,7 @@ footer span{color:var(--gold-light);}
           <div style="background:var(--gray-100);border-radius:12px;padding:16px;">
             <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;">ℹ️ 系统信息</div>
             <div style="font-size:12px;color:var(--text-muted);line-height:2;">
-              当前 Supabase：<code style="background:var(--white);padding:2px 6px;border-radius:4px;font-size:11px;">https://qqtpaeyabwjsknrcblbl.supabase.co</code><br>
+              当前 Supabase：<code style="background:var(--white);padding:2px 6px;border-radius:4px;font-size:11px;">https://ofpkfecsttuxigqyfplw.supabase.co</code><br>
               版本：极速兔后台 v2.2 · 数据库：Supabase PostgreSQL · 客服：内置统一客服
             </div>
           </div>
@@ -2072,9 +2072,11 @@ const TAB_META = {
 
 function switchAdminTab(tab) {
   _currentAdminTab = tab;
-  ['orders','prices','csv','support','bankinfo','users','stats','settings'].forEach(t => {
-    document.getElementById('panel-' + t).classList.toggle('active', t === tab);
-    document.getElementById('nav-' + t).classList.toggle('active', t === tab);
+  ['orders','prices','support','bankinfo','users','stats','settings'].forEach(t => {
+    const panelEl = document.getElementById('panel-' + t);
+    const navEl = document.getElementById('nav-' + t);
+    if(panelEl) panelEl.classList.toggle('active', t === tab);
+    if(navEl) navEl.classList.toggle('active', t === tab);
   });
   const meta = TAB_META[tab] || {};
   const titleEl = document.getElementById('topbar-title');
