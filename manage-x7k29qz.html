@@ -422,9 +422,14 @@ footer span{color:var(--gold-light);}
         </div>
         <!-- 订单内容区 -->
         <div style="flex:1;min-width:0;padding:16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
             <div style="font-size:14px;font-weight:700;">📋 订单管理</div>
-            <div id="orders-count-badge" style="font-size:12px;color:var(--gray-400);background:var(--gray-100);padding:4px 12px;border-radius:20px;"></div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <select id="orders-month-filter" onchange="renderOrdersTable()" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--gray-200);background:var(--white);color:var(--navy);">
+                <option value="all">📅 全部时间</option>
+              </select>
+              <div id="orders-count-badge" style="font-size:12px;color:var(--gray-400);background:var(--gray-100);padding:4px 12px;border-radius:20px;"></div>
+            </div>
           </div>
           <div id="orders-table-wrap">
             <div class="orders-loading">加载中...</div>
@@ -536,20 +541,6 @@ footer span{color:var(--gold-light);}
         <div class="admin-section-title">⚙️ 系统设置</div>
         <div style="display:flex;flex-direction:column;gap:20px;max-width:780px;">
 
-          <!-- ⓪ 礼品卡来源国家管理 -->
-          <div style="background:var(--gray-100);border-radius:12px;padding:16px;">
-            <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px;">🗺️ 礼品卡来源国家</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">管理前台可出售的礼品卡国家列表</div>
-            <div id="country-manager" class="country-manager"></div>
-            <div class="add-country-row" style="margin-top:8px;">
-              <input class="mini-input" id="new-country-flag" placeholder="🏳 国旗">
-              <input class="mini-input" id="new-country-name" placeholder="名称">
-              <input class="mini-input" id="new-country-currency" placeholder="货币">
-              <button class="mini-btn" onclick="addCountry()">+ 添加</button>
-              <button class="mini-btn" onclick="saveCountries()" style="background:var(--navy);color:#fff;">💾 保存</button>
-            </div>
-          </div>
-
           <!-- ① 客户国家管理（带智能搜索） -->
           <div style="background:var(--gray-100);border-radius:12px;padding:16px;">
             <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px;">🌍 客户国家列表（前台首页下拉）</div>
@@ -592,14 +583,11 @@ footer span{color:var(--gold-light);}
             <button class="mini-btn" onclick="savePaymentMethods()" style="margin-top:10px;background:var(--navy);color:#fff;">💾 保存支付方式</button>
           </div>
 
-          <!-- ③ 自动刷新间隔 & 缓存 -->
+          <!-- ③ 缓存管理 -->
           <div style="background:var(--gray-100);border-radius:12px;padding:16px;">
-            <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">🔄 自动刷新间隔 & 缓存</div>
+            <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">🗑 缓存管理</div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <div style="font-size:12px;color:var(--text-muted);">订单/客服刷新间隔（秒）：</div>
-              <input class="mini-input" type="number" id="settings-refresh-interval" value="30" min="10" max="300" style="width:90px;">
-              <button class="mini-btn" onclick="saveRefreshInterval()">保存</button>
-              <button class="mini-btn" style="background:var(--danger);margin-left:12px;color:var(--white)" onclick="clearAllCache()">🗑 清除所有缓存</button>
+              <button class="mini-btn" style="background:var(--danger);color:var(--white)" onclick="clearAllCache()">🗑 清除所有缓存</button>
             </div>
           </div>
 
@@ -617,7 +605,7 @@ footer span{color:var(--gold-light);}
           <div style="background:var(--gray-100);border-radius:12px;padding:16px;">
             <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;">ℹ️ 系统信息</div>
             <div style="font-size:12px;color:var(--text-muted);line-height:2;">
-              当前 Supabase：<code style="background:var(--white);padding:2px 6px;border-radius:4px;font-size:11px;">https://ofpkfecsttuxigqyfplw.supabase.co</code><br>
+              当前 Supabase：<code style="background:var(--white);padding:2px 6px;border-radius:4px;font-size:11px;">https://qqtpaeyabwjsknrcblbl.supabase.co</code><br>
               版本：极速兔后台 v2.2 · 数据库：Supabase PostgreSQL · 客服：内置统一客服
             </div>
           </div>
@@ -630,17 +618,23 @@ footer span{color:var(--gold-light);}
     <div class="admin-tab-panel" id="panel-bankinfo">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
         <input type="text" id="bankinfo-search" placeholder="🔍 搜索客户姓名或邮箱..." oninput="filterBankInfoRows()" style="border:1px solid var(--gray-200);border-radius:8px;padding:8px 14px;font-size:13px;width:280px;outline:none;">
-        <select id="bankinfo-country-filter" onchange="filterBankInfoRows()" style="border:1px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:13px;outline:none;">
-          <option value="">所有国家</option>
-          <option value="nigeria">🇳🇬 Nigeria</option>
-          <option value="ghana">🇬🇭 Ghana</option>
-          <option value="kenya">🇰🇪 Kenya</option>
-          <option value="benin">🇧🇯 Benin</option>
-          <option value="cameroon">🇨🇲 Cameroon</option>
-          <option value="ivory">🇨🇮 Ivory Coast</option>
-          <option value="india">🇮🇳 India</option>
-          <option value="usdt">💎 USDT</option>
-        </select>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <select id="bankinfo-country-filter" onchange="filterBankInfoRows()" style="border:1px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:13px;outline:none;">
+            <option value="">所有国家</option>
+            <option value="nigeria">🇳🇬 Nigeria</option>
+            <option value="ghana">🇬🇭 Ghana</option>
+            <option value="kenya">🇰🇪 Kenya</option>
+            <option value="benin">🇧🇯 Benin</option>
+            <option value="cameroon">🇨🇲 Cameroon</option>
+            <option value="ivory">🇨🇮 Ivory Coast</option>
+            <option value="india">🇮🇳 India</option>
+            <option value="usdt">💎 USDT</option>
+          </select>
+          <select id="bankinfo-month-filter" onchange="filterBankInfoRows()" style="border:1px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:13px;outline:none;">
+            <option value="">📅 全部时间</option>
+          </select>
+          <button onclick="exportBankInfoCSV()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">📥 导出CSV</button>
+        </div>
       </div>
       <div id="bankinfo-table-wrap"><div style="text-align:center;padding:40px;color:var(--gray-400);">Loading...</div></div>
     </div><!-- end panel-bankinfo -->
@@ -1409,7 +1403,27 @@ function filterOrdersVtab(status, el) {
 }
 
 function renderOrdersTable() {
-  const filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
+  // 填充月份下拉
+  const monthSel = document.getElementById('orders-month-filter');
+  if (monthSel) {
+    const months = [...new Set(allOrders.map(o => {
+      const d = new Date(o.created_at);
+      return isNaN(d) ? null : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    }).filter(Boolean))].sort().reverse();
+    const cur = monthSel.value;
+    monthSel.innerHTML = '<option value="all">📅 全部时间</option>' + months.map(m => `<option value="${m}" ${cur===m?'selected':''}>${m.replace('-','年')}月</option>`).join('');
+  }
+
+  const selectedMonth = monthSel ? monthSel.value : 'all';
+  let filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
+  if (selectedMonth !== 'all') {
+    filtered = filtered.filter(o => {
+      const d = new Date(o.created_at);
+      if (isNaN(d)) return false;
+      const m = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      return m === selectedMonth;
+    });
+  }
   const wrap = document.getElementById('orders-table-wrap');
 
   // 更新计数
@@ -2072,11 +2086,9 @@ const TAB_META = {
 
 function switchAdminTab(tab) {
   _currentAdminTab = tab;
-  ['orders','prices','support','bankinfo','users','stats','settings'].forEach(t => {
-    const panelEl = document.getElementById('panel-' + t);
-    const navEl = document.getElementById('nav-' + t);
-    if(panelEl) panelEl.classList.toggle('active', t === tab);
-    if(navEl) navEl.classList.toggle('active', t === tab);
+  ['orders','prices','csv','support','bankinfo','users','stats','settings'].forEach(t => {
+    document.getElementById('panel-' + t).classList.toggle('active', t === tab);
+    document.getElementById('nav-' + t).classList.toggle('active', t === tab);
   });
   const meta = TAB_META[tab] || {};
   const titleEl = document.getElementById('topbar-title');
@@ -2483,16 +2495,6 @@ function formatSupportTime(value){
   catch(e){return String(value);}
 }
 
-// 设置相关
-function saveRefreshInterval() {
-  const val = parseInt(document.getElementById('settings-refresh-interval').value);
-  if (val >= 10 && val <= 300) {
-    localStorage.setItem('jst_refresh_interval', val);
-    showToast('✓ 刷新间隔已保存：' + val + '秒');
-  } else {
-    showToast('间隔需在10~300秒之间', true);
-  }
-}
 function clearAllCache() {
   showCustomConfirm('确认清除所有本地缓存？', () => {
     priceCache = {};
@@ -2758,8 +2760,13 @@ function addPaymentMethod(){
 }
 function removePaymentMethod(i){
   const methods = _lsGet(KEY_PAYMENT_METHODS, []);
-  methods.splice(i,1);
-  _lsSave(KEY_PAYMENT_METHODS, methods);
+  // 先同步当前界面上的数据
+  const synced = methods.map((_,idx)=>({
+    id: document.getElementById('pm-id-'+idx)?.value.trim()||'',
+    label: document.getElementById('pm-label-'+idx)?.value.trim()||''
+  })).filter(m=>m.id&&m.label);
+  synced.splice(i,1);
+  _lsSave(KEY_PAYMENT_METHODS, synced);
   renderPaymentMethodsSettings();
   showToast('✓ 已删除');
 }
@@ -3480,15 +3487,15 @@ function renderAdminList(){
                   <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
                     <div>
                       <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">礼品卡汇率</div>
-                      <input class="mini-input" id="bulk-cr-${c.id}" type="number" step="any" min="0" placeholder="如：5.65" style="width:90px;height:32px;font-size:12px;text-align:center">
+                      <input class="mini-input" id="bulk-cr-${c.id}" type="number" step="any" min="0" placeholder="如：5.65" style="width:90px;height:32px;font-size:12px;text-align:center" value="${localStorage.getItem('jst_calc_cr_${c.id}')||''}">
                     </div>
                     <div>
                       <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">货币汇率</div>
-                      <input class="mini-input" id="bulk-fx-${c.id}" type="number" step="any" min="0" placeholder="如：203.2" style="width:100px;height:32px;font-size:12px;text-align:center">
+                      <input class="mini-input" id="bulk-fx-${c.id}" type="number" step="any" min="0" placeholder="如：203.2" style="width:100px;height:32px;font-size:12px;text-align:center" value="${localStorage.getItem('jst_calc_fx_${c.id}')||''}">
                     </div>
                     <div>
                       <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">利润率%</div>
-                      <input class="mini-input" id="bulk-pr-${c.id}" type="number" step="any" min="0" max="100" placeholder="如：5" style="width:75px;height:32px;font-size:12px;text-align:center">
+                      <input class="mini-input" id="bulk-pr-${c.id}" type="number" step="any" min="0" max="100" placeholder="如：5" style="width:75px;height:32px;font-size:12px;text-align:center" value="${localStorage.getItem('jst_calc_pr_${c.id}')||''}">
                     </div>
                     <button class="mini-btn" style="background:linear-gradient(135deg,#e05030,#c0392b);color:#fff;font-size:12px;height:32px;white-space:nowrap"
                       onclick="(function(){
@@ -3497,6 +3504,9 @@ function renderAdminList(){
                         const pr = parseFloat(document.getElementById('bulk-pr-${c.id}').value) || 0;
                         if (!cr||cr<=0) { showToast('请输入礼品卡汇率',true); return; }
                         if (!fx||fx<=0) { showToast('请输入货币汇率',true); return; }
+                        localStorage.setItem('jst_calc_cr_${c.id}', cr);
+                        localStorage.setItem('jst_calc_fx_${c.id}', fx);
+                        localStorage.setItem('jst_calc_pr_${c.id}', pr);
                         getCardDenoms(${c.id}).forEach(function(d){
                           const ci = document.getElementById('ccr-${c.id}-'+d);
                           const fi = document.getElementById('cfx-${c.id}-'+d);
@@ -4261,13 +4271,64 @@ async function loadAdminBankInfo(){
 function filterBankInfoRows(){
   const q = (document.getElementById('bankinfo-search')?.value||'').toLowerCase();
   const c = document.getElementById('bankinfo-country-filter')?.value||'';
+  const m = document.getElementById('bankinfo-month-filter')?.value||'';
+
+  // 填充月份下拉
+  const monthSel = document.getElementById('bankinfo-month-filter');
+  if(monthSel){
+    const months = [...new Set(allBankInfoRows.map(r=>{
+      const d = new Date(r.updated_at);
+      return isNaN(d)?null:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    }).filter(Boolean))].sort().reverse();
+    const cur = monthSel.value;
+    monthSel.innerHTML = '<option value="">📅 全部时间</option>' + months.map(mo=>`<option value="${mo}" ${cur===mo?'selected':''}>${mo.replace('-','年')}月</option>`).join('');
+  }
+
   const filtered = allBankInfoRows.filter(r=>{
     const u = r._user||{};
     const matchQ = !q || (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
     const matchC = !c || r.country_id === c;
-    return matchQ && matchC;
+    const matchM = !m || (()=>{
+      const d = new Date(r.updated_at);
+      if(isNaN(d)) return false;
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === m;
+    })();
+    return matchQ && matchC && matchM;
   });
   renderBankInfoTable(filtered);
+}
+
+function exportBankInfoCSV(){
+  const q = (document.getElementById('bankinfo-search')?.value||'').toLowerCase();
+  const c = document.getElementById('bankinfo-country-filter')?.value||'';
+  const m = document.getElementById('bankinfo-month-filter')?.value||'';
+  const filtered = allBankInfoRows.filter(r=>{
+    const u = r._user||{};
+    const matchQ = !q || (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
+    const matchC = !c || r.country_id === c;
+    const matchM = !m || (()=>{
+      const d = new Date(r.updated_at);
+      if(isNaN(d)) return false;
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === m;
+    })();
+    return matchQ && matchC && matchM;
+  });
+  if(!filtered.length){ showToast('没有数据可导出',true); return; }
+  const rows = [['客户姓名','邮箱','国家','银行信息','更新时间']];
+  filtered.forEach(r=>{
+    const u = r._user||{};
+    const info = typeof r.info==='string'?JSON.parse(r.info||'{}'):(r.info||{});
+    const infoStr = Object.entries(info).map(([k,v])=>`${k}:${v}`).join(' | ');
+    const date = r.updated_at ? new Date(r.updated_at).toLocaleDateString('zh-CN') : '';
+    rows.push([u.name||'', (u.email||'').split('|')[0].trim(), r.country_id||'', infoStr, date]);
+  });
+  const csv = rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `银行信息_${m||'全部'}_${new Date().toLocaleDateString('zh-CN')}.csv`;
+  a.click();
+  showToast('✓ 导出成功');
 }
 
 function renderBankInfoTable(rows){
