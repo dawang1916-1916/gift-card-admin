@@ -380,6 +380,9 @@ footer span{color:var(--gold-light);}
         <button class="sidebar-nav-tab" id="nav-bankinfo" onclick="switchAdminTab('bankinfo')">🏦 银行信息</button>
         <button class="sidebar-nav-tab" id="nav-users" onclick="switchAdminTab('users')">👥 用户管理</button>
         <button class="sidebar-nav-tab" id="nav-stats" onclick="switchAdminTab('stats')">📊 数据统计</button>
+        <button class="sidebar-nav-tab" id="nav-countries" onclick="switchAdminTab('countries')">🌍 客户国家</button>
+        <button class="sidebar-nav-tab" id="nav-payments" onclick="switchAdminTab('payments')">💳 支付方式</button>
+        <button class="sidebar-nav-tab" id="nav-crypto" onclick="switchAdminTab('crypto')">🪙 加密钱包</button>
         <button class="sidebar-nav-tab" id="nav-settings" onclick="switchAdminTab('settings')">⚙️ 系统设置</button>
       </div>
       <div class="sidebar-footer">
@@ -649,7 +652,6 @@ footer span{color:var(--gold-light);}
       </div>
       <div class="admin-section" style="padding:0;overflow:hidden;"><div style="overflow-x:auto;"><div id="users-table-wrap"><div style="text-align:center;padding:40px;color:var(--gray-400);">加载中...</div></div></div></div>
     </div><!-- end panel-users -->
-    <!-- STATS PANEL -->
     <div class="admin-tab-panel" id="panel-stats">
       <!-- Period selector -->
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
@@ -657,7 +659,12 @@ footer span{color:var(--gold-light);}
         <button class="price-cat-tab active" id="speriod-7"  onclick="setStatsPeriod(7,this)">近7天</button>
         <button class="price-cat-tab" id="speriod-30" onclick="setStatsPeriod(30,this)">近30天</button>
         <button class="price-cat-tab" id="speriod-90" onclick="setStatsPeriod(90,this)">近90天</button>
+        <select id="stats-country-filter" onchange="applyStatsFilter()" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--gray-200);background:var(--white);color:var(--navy);">
+          <option value="">🌍 全部国家</option>
+        </select>
+        <button onclick="exportStatsCSV()" style="background:var(--gold);color:var(--navy);border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;cursor:pointer;">📥 导出CSV</button>
         <button onclick="loadStats()" style="margin-left:auto;background:var(--navy);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;cursor:pointer;">🔄 刷新</button>
+        <span id="stats-auto-refresh-label" style="font-size:11px;color:var(--gray-400);">自动刷新: 30秒</span>
       </div>
 
       <!-- KPI cards -->
@@ -681,6 +688,10 @@ footer span{color:var(--gold-light);}
         <div class="admin-section" style="padding:16px 18px;margin:0;">
           <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">活跃用户</div>
           <div id="kpi-users" style="font-size:26px;font-weight:700;color:var(--navy);">—</div>
+        </div>
+        <div class="admin-section" style="padding:16px 18px;margin:0;">
+          <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">总交易金额</div>
+          <div id="kpi-revenue" style="font-size:26px;font-weight:700;color:var(--gold);">—</div>
         </div>
       </div>
 
@@ -712,6 +723,21 @@ footer span{color:var(--gold-light);}
         </div>
       </div>
     </div><!-- end panel-stats -->
+
+    <!-- COUNTRIES PANEL -->
+    <div class="admin-tab-panel" id="panel-countries">
+      <div id="countries-panel-content">加载中...</div>
+    </div>
+
+    <!-- PAYMENTS PANEL -->
+    <div class="admin-tab-panel" id="panel-payments">
+      <div id="payments-panel-content">加载中...</div>
+    </div>
+
+    <!-- CRYPTO PANEL -->
+    <div class="admin-tab-panel" id="panel-crypto">
+      <div id="crypto-panel-content">加载中...</div>
+    </div>
 
 
     <!-- User Orders Drawer -->
@@ -2075,20 +2101,25 @@ function toggleAutoRefresh() {
 
 // ===== ADMIN TAB SWITCHING =====
 const TAB_META = {
-  orders:   { title: '📋 订单管理', sub: '管理所有交易订单，实时同步云端' },
-  prices:   { title: '💰 价格管理', sub: '设置各礼品卡兑换汇率' },
-  support:  { title: '💬 客服管理', sub: '管理各国家客服团队（主客服 + 子客服）' },
-  settings: { title: '⚙️ 系统设置', sub: '配置系统参数和缓存管理' },
-  bankinfo: { title: '🏦 银行信息', sub: '查看每位客户按国家保存的银行账户信息' },
-  users:    { title: '👥 用户管理', sub: '查看注册用户、订单历史、封禁管理' },
-  stats:    { title: '📊 数据统计', sub: '订单趋势、国家对比、热门礼品卡排行' },
+  orders:    { title: '📋 订单管理', sub: '管理所有交易订单，实时同步云端' },
+  prices:    { title: '💰 价格管理', sub: '设置各礼品卡兑换汇率' },
+  support:   { title: '💬 客服管理', sub: '管理各国家客服团队（主客服 + 子客服）' },
+  settings:  { title: '⚙️ 系统设置', sub: '配置系统参数和缓存管理' },
+  bankinfo:  { title: '🏦 银行信息', sub: '查看每位客户按国家保存的银行账户信息' },
+  users:     { title: '👥 用户管理', sub: '查看注册用户、订单历史、封禁管理' },
+  stats:     { title: '📊 数据统计', sub: '订单趋势、国家对比、热门礼品卡排行' },
+  countries: { title: '🌍 客户国家', sub: '管理前台首页国家下拉列表' },
+  payments:  { title: '💳 支付方式', sub: '管理前台下单支付方式选项' },
+  crypto:    { title: '🪙 加密钱包', sub: '管理 USDT / Bitcoin 收款钱包地址和二维码' },
 };
 
 function switchAdminTab(tab) {
   _currentAdminTab = tab;
-  ['orders','prices','csv','support','bankinfo','users','stats','settings'].forEach(t => {
-    document.getElementById('panel-' + t).classList.toggle('active', t === tab);
-    document.getElementById('nav-' + t).classList.toggle('active', t === tab);
+  ['orders','prices','support','bankinfo','users','stats','settings','countries','payments','crypto'].forEach(t => {
+    const panelEl = document.getElementById('panel-' + t);
+    const navEl = document.getElementById('nav-' + t);
+    if(panelEl) panelEl.classList.toggle('active', t === tab);
+    if(navEl) navEl.classList.toggle('active', t === tab);
   });
   const meta = TAB_META[tab] || {};
   const titleEl = document.getElementById('topbar-title');
@@ -2097,7 +2128,6 @@ function switchAdminTab(tab) {
   if (subEl) subEl.textContent = meta.sub || '';
   if (tab === 'orders') loadOrders(true);
   if (tab === 'support') {
-    // Only init panel if not already built
     if (!document.getElementById('support-inbox-list')) { initSupportPanel(); }
     renderSupportAgentsSettings();
   }
@@ -2106,6 +2136,9 @@ function switchAdminTab(tab) {
   if (tab === 'prices') syncDefaultDenomsToPricesPanel();
   if (tab === 'users') loadUsers();
   if (tab === 'stats') loadStats();
+  if (tab === 'countries') renderCountriesPanel();
+  if (tab === 'payments') renderPaymentsPanel();
+  if (tab === 'crypto') renderCryptoPanel();
 }
 
 // ==================== Supabase 在线客服管理系统 ====================
@@ -4595,7 +4628,7 @@ function closeUserDrawer(e) {
   document.getElementById('user-drawer-overlay').classList.remove('open');
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onload="window._chartJsReady=true;if(window._pendingStats){loadStats();window._pendingStats=false;}"></script>
 <script>
 // ==================== STATS MODULE ====================
 
@@ -4611,8 +4644,9 @@ function setStatsPeriod(days, btn) {
 }
 
 async function loadStats() {
+  if (typeof Chart === 'undefined') { window._pendingStats = true; return; }
   // Show loading in KPIs
-  ['kpi-total','kpi-pending','kpi-paid','kpi-rejected','kpi-users'].forEach(id => {
+  ['kpi-total','kpi-pending','kpi-paid','kpi-rejected','kpi-users','kpi-revenue'].forEach(id => {
     const el = document.getElementById(id); if (el) el.textContent = '…';
   });
 
@@ -4622,17 +4656,56 @@ async function loadStats() {
       `orders?select=id,user_id,customer_email,country_id,card_id,denom,status,created_at&created_at=gte.${encodeURIComponent(since)}&order=created_at.asc`
     );
     _statsOrders = orders || [];
-    renderStatsKPIs(_statsOrders);
-    renderTrendChart(_statsOrders);
-    renderStatusChart(_statsOrders);
-    renderCountryChart(_statsOrders);
-    renderTopCards(_statsOrders);
+
+    // 填充国家筛选下拉
+    const countrySel = document.getElementById('stats-country-filter');
+    if (countrySel) {
+      const countries = [...new Set(_statsOrders.map(o => o.country_id).filter(Boolean))].sort();
+      const cur = countrySel.value;
+      countrySel.innerHTML = '<option value="">🌍 全部国家</option>' + countries.map(c => `<option value="${c}" ${cur===c?'selected':''}>${c}</option>`).join('');
+    }
+
+    applyStatsFilter();
+
+    // 启动自动刷新（30秒）
+    if (!window._statsAutoRefreshTimer) {
+      window._statsAutoRefreshTimer = setInterval(() => {
+        if (document.getElementById('panel-stats')?.classList.contains('active')) loadStats();
+      }, 30000);
+    }
   } catch(e) {
-    ['kpi-total','kpi-pending','kpi-paid','kpi-rejected','kpi-users'].forEach(id => {
+    ['kpi-total','kpi-pending','kpi-paid','kpi-rejected','kpi-users','kpi-revenue'].forEach(id => {
       const el = document.getElementById(id); if (el) el.textContent = '—';
     });
     showToast('统计加载失败: ' + e.message, true);
   }
+}
+
+function applyStatsFilter() {
+  const c = document.getElementById('stats-country-filter')?.value || '';
+  const filtered = c ? _statsOrders.filter(o => o.country_id === c) : _statsOrders;
+  renderStatsKPIs(filtered);
+  renderTrendChart(filtered);
+  renderStatusChart(filtered);
+  renderCountryChart(filtered);
+  renderTopCards(filtered);
+}
+
+function exportStatsCSV() {
+  const c = document.getElementById('stats-country-filter')?.value || '';
+  const filtered = c ? _statsOrders.filter(o => o.country_id === c) : _statsOrders;
+  if (!filtered.length) { showToast('没有数据可导出', true); return; }
+  const rows = [['订单ID','用户','国家','礼品卡','面值','状态','时间']];
+  filtered.forEach(o => {
+    rows.push([o.id||'', o.customer_email||'', o.country_id||'', o.card_id||'', o.denom||'', o.status||'', o.created_at ? new Date(o.created_at).toLocaleString('zh-CN') : '']);
+  });
+  const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `数据统计_${new Date().toLocaleDateString('zh-CN')}.csv`;
+  a.click();
+  showToast('✓ 导出成功');
 }
 
 function renderStatsKPIs(orders) {
@@ -4641,6 +4714,7 @@ function renderStatsKPIs(orders) {
   const paid     = orders.filter(o => o.status === 'paid').length;
   const rejected = orders.filter(o => o.status === 'rejected').length;
   const users    = new Set(orders.map(o => o.user_id || o.customer_email).filter(Boolean)).size;
+  const revenue  = orders.filter(o => o.status === 'paid').reduce((sum, o) => sum + (parseFloat(o.denom) || 0), 0);
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('kpi-total',    total);
@@ -4648,6 +4722,7 @@ function renderStatsKPIs(orders) {
   set('kpi-paid',     paid);
   set('kpi-rejected', rejected);
   set('kpi-users',    users);
+  set('kpi-revenue',  '$' + revenue.toLocaleString());
 }
 
 // Build date labels for the period
@@ -4809,5 +4884,227 @@ function renderTopCards(orders) {
       </div>
     </div>`;
   }).join('');
+}
+
+// ==================== 客户国家管理面板 ====================
+function renderCountriesPanel() {
+  const wrap = document.getElementById('countries-panel-content');
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <div class="admin-section">
+      <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px;">🌍 客户国家列表（前台首页下拉）</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">控制用户"Select Your Country"选择哪些国家，货币符号用于价格显示</div>
+      <div id="set-client-countries-2" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="background:var(--gray-100);border-radius:8px;padding:10px 12px;border:1px solid var(--gray-200);">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;">➕ 添加国家（输入名称自动识别）</div>
+        <div style="position:relative;margin-bottom:8px;">
+          <input class="mini-input" id="cc2-search-new" placeholder="🔍 输入国家名，如：Nigeria、肯尼亚..." style="width:100%" oninput="onNewClientCountrySearch2(this.value)">
+          <div id="cc2-search-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:200;max-height:200px;overflow-y:auto;margin-top:4px;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">找不到？手动填写：</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <input class="mini-input" id="cc2-new-flag" placeholder="🏳 国旗" style="width:60px;">
+          <input class="mini-input" id="cc2-new-id" placeholder="ID: nigeria" style="width:110px;">
+          <input class="mini-input" id="cc2-new-name" placeholder="名称: Nigeria" style="width:120px;">
+          <input class="mini-input" id="cc2-new-currency" placeholder="货币: NGN" style="width:90px;">
+          <input class="mini-input" id="cc2-new-symbol" placeholder="符号: ₦" style="width:70px;">
+          <button class="mini-btn" onclick="addClientCountry2()">+ 添加</button>
+        </div>
+      </div>
+      <button class="mini-btn" onclick="saveClientCountries()" style="margin-top:10px;background:var(--navy);color:#fff;">💾 保存客户国家</button>
+    </div>`;
+  // 渲染现有国家列表
+  const listWrap = document.getElementById('set-client-countries-2');
+  if (listWrap) {
+    listWrap.innerHTML = CLIENT_COUNTRIES.map((c,i) => `
+      <div style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;padding:7px 12px;">
+        <span style="font-size:18px;">${escapeHtml(c.flag||'🏳')}</span>
+        <span style="font-size:13px;font-weight:600;min-width:80px;">${escapeHtml(c.id)}</span>
+        <span style="font-size:13px;color:var(--text-muted);flex:1;">${escapeHtml(c.name||'')} · ${escapeHtml(c.currency||'')} ${escapeHtml(c.symbol||'')}</span>
+        <button class="mini-btn" style="background:var(--danger-light);color:var(--danger-text-dark);" onclick="removeClientCountryByIndex(${i})">× 删除</button>
+      </div>`).join('');
+  }
+}
+
+function removeClientCountryByIndex(i) {
+  if (CLIENT_COUNTRIES.length <= 1) { showToast('至少保留一个国家', true); return; }
+  CLIENT_COUNTRIES.splice(i, 1);
+  renderCountriesPanel();
+}
+
+function addClientCountry2() {
+  const flag = document.getElementById('cc2-new-flag')?.value.trim();
+  const id   = document.getElementById('cc2-new-id')?.value.trim().toLowerCase();
+  const name = document.getElementById('cc2-new-name')?.value.trim();
+  const currency = document.getElementById('cc2-new-currency')?.value.trim().toUpperCase();
+  const symbol   = document.getElementById('cc2-new-symbol')?.value.trim();
+  if (!id || !name) { showToast('ID 和名称不能为空', true); return; }
+  if (CLIENT_COUNTRIES.find(c => c.id === id)) { showToast('ID 已存在', true); return; }
+  CLIENT_COUNTRIES.push({id, name, flag: flag||'🏳', currency, symbol});
+  renderCountriesPanel();
+  showToast('✓ 已添加，记得点保存');
+}
+
+function onNewClientCountrySearch2(val) {
+  // 复用原有搜索逻辑
+  onNewClientCountrySearch(val);
+}
+
+// ==================== 支付方式管理面板 ====================
+function renderPaymentsPanel() {
+  const wrap = document.getElementById('payments-panel-content');
+  if (!wrap) return;
+  const methods = _lsGet(KEY_PAYMENT_METHODS, [{id:'bank_transfer',label:'🏦 Bank Transfer'},{id:'mobile_money',label:'📱 Mobile Money'},{id:'usdt',label:'💎 USDT'},{id:'bitcoin',label:'₿ Bitcoin'}]);
+  wrap.innerHTML = `
+    <div class="admin-section">
+      <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px;">💳 下单支付方式</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">前台下单流程"选择支付方式"步骤里显示的选项</div>
+      <div id="set-payment-methods-2" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+        ${methods.map((m,i) => `
+          <div style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;padding:7px 12px;">
+            <input class="mini-input" id="pm2-id-${i}" value="${escapeAttr(m.id)}" style="width:160px;" placeholder="ID">
+            <input class="mini-input" id="pm2-label-${i}" value="${escapeAttr(m.label)}" style="flex:1;" placeholder="显示名称">
+            <button class="mini-btn" style="background:var(--danger-light);color:var(--danger-text-dark);padding:6px 10px;" onclick="removePayMethod2(${i})">× 删除</button>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <input class="mini-input" id="pm2-new-id" placeholder="ID: bank_transfer" style="width:160px;">
+        <input class="mini-input" id="pm2-new-label" placeholder="名称: 🏦 Bank Transfer" style="flex:1;">
+        <button class="mini-btn" onclick="addPayMethod2()">+ 添加</button>
+      </div>
+      <button class="mini-btn" onclick="savePayMethods2()" style="background:var(--navy);color:#fff;">💾 保存支付方式</button>
+    </div>`;
+}
+
+function removePayMethod2(i) {
+  const count = document.querySelectorAll('[id^="pm2-id-"]').length;
+  const synced = [];
+  for (let idx = 0; idx < count; idx++) {
+    const id = document.getElementById('pm2-id-'+idx)?.value.trim();
+    const label = document.getElementById('pm2-label-'+idx)?.value.trim();
+    if (id && label) synced.push({id, label});
+  }
+  synced.splice(i, 1);
+  _lsSave(KEY_PAYMENT_METHODS, synced);
+  renderPaymentsPanel();
+  showToast('✓ 已删除');
+}
+
+function addPayMethod2() {
+  const id = document.getElementById('pm2-new-id')?.value.trim();
+  const label = document.getElementById('pm2-new-label')?.value.trim();
+  if (!id || !label) { showToast('ID 和名称不能为空', true); return; }
+  const methods = _lsGet(KEY_PAYMENT_METHODS, []);
+  methods.push({id, label});
+  _lsSave(KEY_PAYMENT_METHODS, methods);
+  renderPaymentsPanel();
+  showToast('✓ 已添加');
+}
+
+function savePayMethods2() {
+  const count = document.querySelectorAll('[id^="pm2-id-"]').length;
+  const updated = [];
+  for (let i = 0; i < count; i++) {
+    const id = document.getElementById('pm2-id-'+i)?.value.trim();
+    const label = document.getElementById('pm2-label-'+i)?.value.trim();
+    if (id && label) updated.push({id, label});
+  }
+  _lsSave(KEY_PAYMENT_METHODS, updated);
+  showToast('✓ 支付方式已保存，刷新前台生效');
+}
+
+// ==================== 加密钱包管理面板 ====================
+const CRYPTO_WALLETS_KEY = 'jst_crypto_wallets';
+
+function renderCryptoPanel() {
+  const wrap = document.getElementById('crypto-panel-content');
+  if (!wrap) return;
+  const wallets = _lsGet(CRYPTO_WALLETS_KEY, {
+    usdt: { address: '', network: 'TRC20', qr: '' },
+    bitcoin: { address: '', qr: '' }
+  });
+  wrap.innerHTML = `
+    <div class="admin-section">
+      <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px;">🪙 加密货币收款钱包</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">设置 USDT 和 Bitcoin 收款地址及二维码，显示在前台支付流程中</div>
+
+      <!-- USDT -->
+      <div style="background:var(--gray-100);border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;">💎 USDT</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;color:var(--text-muted);min-width:80px;">网络类型</span>
+            <select id="usdt-network" class="mini-input" style="width:160px;">
+              <option value="TRC20" ${wallets.usdt?.network==='TRC20'?'selected':''}>TRC20 (TRON)</option>
+              <option value="ERC20" ${wallets.usdt?.network==='ERC20'?'selected':''}>ERC20 (Ethereum)</option>
+              <option value="BEP20" ${wallets.usdt?.network==='BEP20'?'selected':''}>BEP20 (BSC)</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;color:var(--text-muted);min-width:80px;">钱包地址</span>
+            <input class="mini-input" id="usdt-address" value="${escapeAttr(wallets.usdt?.address||'')}" placeholder="输入 USDT 钱包地址" style="flex:1;">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;color:var(--text-muted);min-width:80px;">二维码</span>
+            <div style="flex:1;">
+              <input type="file" id="usdt-qr-file" accept="image/*" onchange="previewCryptoQR('usdt')" style="font-size:12px;">
+              ${wallets.usdt?.qr ? `<img src="${wallets.usdt.qr}" style="margin-top:8px;width:120px;height:120px;object-fit:contain;border:1px solid var(--gray-200);border-radius:8px;">` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bitcoin -->
+      <div style="background:var(--gray-100);border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;">₿ Bitcoin</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;color:var(--text-muted);min-width:80px;">钱包地址</span>
+            <input class="mini-input" id="btc-address" value="${escapeAttr(wallets.bitcoin?.address||'')}" placeholder="输入 Bitcoin 钱包地址" style="flex:1;">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;color:var(--text-muted);min-width:80px;">二维码</span>
+            <div style="flex:1;">
+              <input type="file" id="btc-qr-file" accept="image/*" onchange="previewCryptoQR('btc')" style="font-size:12px;">
+              ${wallets.bitcoin?.qr ? `<img src="${wallets.bitcoin.qr}" style="margin-top:8px;width:120px;height:120px;object-fit:contain;border:1px solid var(--gray-200);border-radius:8px;">` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="mini-btn" onclick="saveCryptoWallets()" style="background:var(--navy);color:#fff;font-size:13px;padding:10px 20px;">💾 保存钱包信息</button>
+    </div>`;
+}
+
+function previewCryptoQR(type) {
+  const fileInput = document.getElementById(type === 'usdt' ? 'usdt-qr-file' : 'btc-qr-file');
+  if (!fileInput?.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wallets = _lsGet(CRYPTO_WALLETS_KEY, {usdt:{},bitcoin:{}});
+    if (type === 'usdt') wallets.usdt = {...(wallets.usdt||{}), qr: e.target.result};
+    else wallets.bitcoin = {...(wallets.bitcoin||{}), qr: e.target.result};
+    _lsSave(CRYPTO_WALLETS_KEY, wallets);
+    renderCryptoPanel();
+    showToast('✓ 二维码已预览，记得保存');
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+
+function saveCryptoWallets() {
+  const wallets = {
+    usdt: {
+      address: document.getElementById('usdt-address')?.value.trim() || '',
+      network: document.getElementById('usdt-network')?.value || 'TRC20',
+      qr: _lsGet(CRYPTO_WALLETS_KEY, {})?.usdt?.qr || ''
+    },
+    bitcoin: {
+      address: document.getElementById('btc-address')?.value.trim() || '',
+      qr: _lsGet(CRYPTO_WALLETS_KEY, {})?.bitcoin?.qr || ''
+    }
+  };
+  _lsSave(CRYPTO_WALLETS_KEY, wallets);
+  showToast('✓ 钱包信息已保存');
+  renderCryptoPanel();
 }
 </script>
