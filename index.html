@@ -1722,7 +1722,7 @@ async function switchCountry(id){
   badge.textContent=`${c.flag} ${c.name} · ${c.currency}`;
   updateSupportUi();
   // 只有登录后才加载价格，未登录不发请求
-  if(isLoggedIn()) await loadPrices(id);
+  await loadPrices(id);
   renderGrid();
 }
 
